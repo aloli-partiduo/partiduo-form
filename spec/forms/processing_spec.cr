@@ -72,6 +72,14 @@ describe "Formulaires : traitement par un utilisateur authentifié (D-FRM-010, D
     closed.status.should eq("closed")
     closed.note.should eq("Déjà client")
     Api.reject(S.processor, response.id).error_keys.should eq(["form.errors.response.processed"])
+    Forms::Upload.all.count.should eq(1)
+  end
+
+  it "efface aussitôt les pièces en quarantaine d'une réponse rejetée" do
+    S.setup
+    response = received([S.file("devis.pdf", S::PDF)])
+    Api.reject(S.processor, response.id).value!.uploads.should be_empty
+    Forms::Upload.all.count.should eq(0)
   end
 
   it "purge les réponses échues, à la lecture de la boîte comme à la demande" do

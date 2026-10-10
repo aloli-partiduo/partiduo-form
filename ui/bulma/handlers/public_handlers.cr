@@ -26,7 +26,11 @@ module Forms
       SECURITY_HEADERS = {
         "Content-Security-Policy" => "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; " \
                                      "form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
-        "Referrer-Policy"              => "no-referrer",
+        # `same-origin` et non `no-referrer` : sous `no-referrer`, le
+        # navigateur envoie `Origin: null` avec le formulaire, que la
+        # protection CSRF refuserait ; le jeton ne part toujours vers
+        # aucun autre site.
+        "Referrer-Policy"              => "same-origin",
         "Cache-Control"                => "no-store",
         "Pragma"                       => "no-cache",
         "X-Robots-Tag"                 => "noindex, nofollow, noarchive",
@@ -44,6 +48,10 @@ module Forms
         secured(preflight || super)
       rescue Marten::HTTP::Errors::RequestBodyTooBig
         secured(too_large)
+      ensure
+        # Le journal des requêtes du serveur écrit le chemin *après* la
+        # réponse : il n'y verra que `/f/…` et jamais le jeton (D-FRM-015).
+        request.partiduo_form_mask_path(Ui::MASKED_PATH)
       end
 
       def get
@@ -70,8 +78,12 @@ module Forms
         params["token"].to_s
       end
 
+      # Adresse du client ; une valeur qui n'est pas une adresse IP (en-tête
+      # forgé derrière un mandataire mal réglé) compte pour une seule clé,
+      # sans grossir la table de limitation.
       private def ip : String
-        PartiduoUi::RateLimit.client_ip(request)
+        address = PartiduoUi::RateLimit.client_ip(request)
+        Socket::IPAddress.valid?(address) ? address : "invalide"
       end
 
       # Contrôles faits avant la protection CSRF et la lecture du corps.

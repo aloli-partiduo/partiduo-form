@@ -37,6 +37,7 @@ module Forms
     HOURLY_LIMIT         =  30
     MAX_PENDING          = 200
     MAX_QUARANTINE_BYTES = 200 * 1_048_576
+    MAX_FORM_QUARANTINE  = 50 * 1_048_576
 
     # Longueurs par défaut et maximales d'une valeur saisie.
     DEFAULT_TEXT_LENGTH     =  200

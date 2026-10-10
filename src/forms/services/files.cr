@@ -38,18 +38,35 @@ module Forms
         return errors
       end
       files.each do |file|
+        type = detect(file.content)
         if file.content.empty?
           errors << Records.error("files", "files.empty")
         elsif file.content.size > Api::MAX_FILE_BYTES
           errors << Records.error("files", "files.too_large", {"max" => (Api::MAX_FILE_BYTES // 1_048_576).to_s})
-        elsif detect(file.content).nil?
+        elsif type.nil?
           errors << Records.error("files", "files.type")
+        elsif type == "application/pdf" && active_pdf?(file.content)
+          errors << Records.error("files", "files.active")
         end
       end
-      if errors.empty? && quarantined_bytes + files.sum(&.content.size).to_i64 > Api::MAX_QUARANTINE_BYTES
-        errors << Records.error("files", "files.storage_full")
+      if errors.empty?
+        size = files.sum(&.content.size).to_i64
+        if quarantined_bytes + size > Api::MAX_QUARANTINE_BYTES ||
+           quarantined_bytes(definition.id!.to_i64) + size > Api::MAX_FORM_QUARANTINE
+          errors << Records.error("files", "files.storage_full")
+        end
       end
       errors
+    end
+
+    # PDF à contenu actif (JavaScript, lancement d'application, fichier
+    # embarqué, formulaire XFA) ou tronqué : refusé à la porte, même s'il
+    # n'est jamais affiché par Partiduo (D-FRM-009).
+    ACTIVE_PDF = /\/(?:JavaScript|JS|Launch|EmbeddedFile|XFA|RichMedia|OpenAction|AA)\b/
+
+    def self.active_pdf?(bytes : Bytes) : Bool
+      text = String.new(bytes).scrub
+      text.matches?(ACTIVE_PDF) || !text.includes?("%%EOF")
     end
 
     # Volume des pièces en quarantaine (non versées au dossier), pour toute
@@ -60,11 +77,21 @@ module Forms
       end
     end
 
+    # Volume en quarantaine d'un formulaire : un lien abusé ne remplit pas
+    # la quarantaine de tous les autres.
+    def self.quarantined_bytes(definition_id : Int64) : Int64
+      Marten::DB::Connection.default.open do |db|
+        db.scalar("SELECT COALESCE(SUM(u.byte_size), 0)::bigint FROM form_upload u " \
+                  "JOIN form_response r ON r.id = u.response_id " \
+                  "WHERE u.attachment_id IS NULL AND r.definition_id = $1", definition_id).as(Int64)
+      end
+    end
+
     # Nom affiché et téléchargé : sans chemin ni caractère de contrôle ou
     # réservé, borné, avec l'extension du type reconnu.
     def self.clean_filename(name : String, content_type : String) : String
       base = (name.valid_encoding? ? name : name.scrub("_")).split(/[\/\\]/).last? || ""
-      base = base.gsub(/[\x00-\x1F\x7F"<>:|?*;]/, "_").strip.lchop('.')
+      base = base.gsub(Values::CONTROL, "").gsub(/[\x00-\x1F\x7F"<>:|?*;]/, "_").strip.lchop('.')
       stem = File.basename(base, File.extname(base)).strip
       stem = "piece" if stem.empty?
       extension = Api::FILE_TYPES[content_type]

@@ -65,7 +65,7 @@ Natures (`FIELD_KINDS`) : `text`, `textarea`, `email`, `phone`, `number`,
   `limits.inbox_full`, `value.*` sur la clé du champ (`required`,
   `too_long`, `encoding`, `email`, `phone`, `number`, `date`, `choice`),
   `files.*` (`not_accepted`, `too_many`, `empty`, `too_large`, `type`,
-  `storage_full`). `trap` vrai : succès apparent, rien n'est conservé.
+  `active`, `storage_full`). `trap` vrai : succès apparent, rien n'est conservé.
 
 == Boîte de réception
 
@@ -79,7 +79,7 @@ Natures (`FIELD_KINDS`) : `text`, `textarea`, `email`, `phone`, `number`,
   des fiches, `response.processed`, `files.forbidden`, erreurs du socle
   sur `files`.
 * `close(actor, id, note)`, `reject(actor, id, note)` — `response.processed`
-  si déjà traitée.
+  si déjà traitée ; le rejet efface les pièces en quarantaine.
 * `file(actor, upload_id) : FileView` — pièce reçue (quarantaine ou versée).
 * `delete_response(actor, id)`, `purge(actor, now)`.
 
@@ -92,7 +92,7 @@ Statuts (`STATUSES`) : `received`, `accepted`, `closed`, `rejected`.
 |Limite |Valeur
 |Envoi public (corps entier) |2 400 000 octets
 |Pièce, nombre de pièces |1 Mio, 3
-|Quarantaine de l'instance |200 Mio
+|Quarantaine de l'instance, d'un formulaire |200 Mio, 50 Mio
 |Envois par lien et par heure (en base) |30
 |Réponses à traiter par formulaire |200
 |Champs par formulaire, choix par liste |30, 50

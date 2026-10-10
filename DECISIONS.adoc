@@ -224,8 +224,10 @@ comme `PartiduoUi::App#setup` monte les extensions), hors de `/ext/`
 
 Toute réponse porte `Content-Security-Policy` (`default-src 'none'`, styles
 et polices de l'instance seulement, aucun script, `frame-ancestors 'none'`,
-`form-action 'self'`), `Referrer-Policy: no-referrer` (le jeton est dans
-l'adresse), `Cache-Control: no-store`, `X-Robots-Tag: noindex`,
+`form-action 'self'`), `Referrer-Policy: same-origin` (le jeton est dans
+l'adresse : il ne part vers aucun autre site ; `no-referrer` ferait envoyer
+`Origin: null` avec le formulaire, que la protection CSRF refuse),
+`Cache-Control: no-store`, `X-Robots-Tag: noindex`,
 `X-Frame-Options: DENY`, `nosniff`, `Permissions-Policy`. La page n'a ni
 menu, ni script, ni donnée du dossier ; le formulaire poste vers l'adresse
 courante sans la répéter. Un champ piège invisible (`website`) rempli :
@@ -252,7 +254,14 @@ voulu.
 *Choix.* PDF, PNG et JPEG seulement, reconnus par leur *signature* (ni le
 type annoncé ni l'extension ne comptent) ; 1 Mo par pièce, 1 à 3 par
 réponse, 200 Mo au plus en quarantaine pour toute l'instance ; nom assaini
-(sans chemin, caractères réservés remplacés, extension du type reconnu).
+(sans chemin, caractères de contrôle et d'orientation retirés, caractères
+réservés remplacés, extension du type reconnu). Un PDF à contenu actif
+(`/JavaScript`, `/JS`, `/Launch`, `/OpenAction`, `/AA`, `/EmbeddedFile`,
+`/XFA`, `/RichMedia`) ou sans `%%EOF` est refusé. 50 Mo au plus en
+quarantaine par formulaire, pour qu'un lien abusé ne bloque pas les autres ;
+les envois sont sérialisés par un verrou consultatif de transaction, pour
+que les plafonds (boîte, quarantaine) tiennent sous la concurrence. Les
+pièces d'une réponse rejetée sont effacées aussitôt.
 Le contenu attend en base64 dans `form_upload`, effacé avec la réponse. Qui
 traite la réponse (`form.process`) peut télécharger une pièce, toujours en
 pièce jointe (`Content-Disposition: attachment`, `nosniff`, CSP `sandbox`).
@@ -314,8 +323,36 @@ feuilles de style et le gabarit de champ de l'interface.
 *Choix.* Source `partiduo.form` : réponse reçue (formulaire, lien, réponse,
 nombre de pièces), refus (motif et indice du lien), purges, effacements.
 Jamais de jeton, de valeur reçue, de nom de fichier ni d'adresse IP
-(vérifié par `spec/architecture/conventions_spec.cr`). Les adresses ne
+(vérifié par `spec/architecture/conventions_spec.cr`). Le journal des
+requêtes du serveur Marten écrit le chemin après la réponse : la page
+publique le remplace alors par `/f/…` (réouverture de
+`Marten::HTTP::Request`, comme l'interface le fait déjà pour ses propres
+attributs), et le jeton n'y paraît pas. Les adresses ne
 vivent qu'en mémoire, le temps de la fenêtre de limitation.
+
+=== D-FRM-016 — Audit de sécurité de la surface publique (10 octobre 2026)
+
+*Contexte.* La page publique a été relue par un audit de sécurité avant la
+livraison.
+
+*Corrigé.* Politique de référent `no-referrer` qui aurait fait refuser par
+la CSRF tout envoi depuis un vrai navigateur (`Origin: null`) ; jeton
+écrit en clair dans le journal des requêtes du serveur ; quarantaine
+saturable par un seul lien (quota par formulaire, pièces des réponses
+rejetées effacées) ; plafonds lus sans verrou (verrou consultatif) ;
+adresse client non validée (une valeur qui n'est pas une adresse IP
+compte pour une seule clé) ; PDF à contenu actif admis ; caractères
+d'orientation dans les noms de fichier.
+
+*Écarté.* Clés de champ réservées (`website`, `files`, `csrftoken`) :
+déjà refusées par le contrat (`field.key_reserved`, spec). Analyse
+antivirale : hors de l'instance, à brancher au mandataire ou au versement
+si le besoin se confirme.
+
+*Reporté au déploiement ou au cœur.* Limitation par processus (A-FRM-4),
+`X-Real-IP` à écraser au mandataire, HSTS au mandataire (l'interface le
+pose déjà en HTTPS), neutralisation des formules dans les exports CSV du
+cœur (A-FRM-5).
 
 == Amendements proposés
 
@@ -354,9 +391,25 @@ stocker ni exiger de droit, pour un contenu reçu d'un anonyme.
 
 *Constat.* La limitation en mémoire est propre à chaque processus, comme
 `PartiduoUi::RateLimit` ; la limite durable par lien est en base. Le jeton
-figure dans l'adresse : le journal d'accès du mandataire (nginx) l'enregistre.
+figure dans l'adresse : le journal d'accès du mandataire (nginx)
+l'enregistre (celui du serveur Marten est masqué, D-FRM-015). Derrière le
+mandataire, l'adresse du client vient de `X-Real-IP` : si le mandataire ne
+l'écrase pas, elle se falsifie ; s'il ne la pose pas, tous les visiteurs
+partagent une même clé.
 
 *Proposition.* Côté déploiement (hors de ce dépôt) : ne pas journaliser le
 chemin `/f/` en clair (format de journal qui masque le dernier segment, ou
-`access_log off` pour ce lieu), et limiter le débit de `/f/` au mandataire
-(`limit_req`).
+`access_log off` pour ce lieu), écraser `X-Real-IP` par `$remote_addr`,
+limiter le débit de `/f/` au mandataire (`limit_req`). Côté Marten : un
+réglage pour masquer des chemins dans le journal des requêtes, qui
+remplacerait la réouverture de `Marten::HTTP::Request`.
+
+=== A-FRM-5 — Formules neutralisées dans les exports CSV du cœur
+
+*Constat.* `PartiduoUi::Table#to_csv` écrit les cellules telles quelles.
+L'extension neutralise ce qu'elle exporte (D-FRM-012), mais une valeur
+reçue du public (nom, courriel commençant par `=`) peut entrer dans une
+fiche et ressortir dans un export du cœur.
+
+*Proposition.* Neutraliser `=`, `+`, `-`, `@`, tabulation et retour en tête
+de cellule dans l'export CSV commun de l'interface.

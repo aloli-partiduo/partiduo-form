@@ -131,13 +131,16 @@ describe "Formulaires : envoi public par jeton (D-FRM-007, D-FRM-008)" do
       .error_keys.should eq(["form.errors.files.too_many"])
     S.submit(token, files: [S.file("page.pdf", S::HTML)]).error_keys.should eq(["form.errors.files.type"])
     S.submit(token, files: [S.file("vide.pdf", "")]).error_keys.should eq(["form.errors.files.empty"])
+    S.submit(token, files: [S.file("actif.pdf", "%PDF-1.7\n1 0 obj << /OpenAction << /S /JavaScript /JS (app.alert(1)) >> >>\n%%EOF")])
+      .error_keys.should eq(["form.errors.files.active"])
+    S.submit(token, files: [S.file("tronque.pdf", "%PDF-1.7\n1 0 obj")]).error_keys.should eq(["form.errors.files.active"])
     big = Api::FileInput.new(filename: "gros.pdf", content_type: "application/pdf",
       content: ("%PDF-" + "x" * Api::MAX_FILE_BYTES).to_slice)
     S.submit(token, files: [big]).error_keys.should eq(["form.errors.files.too_large"])
 
-    S.submit(token, files: [S.file("../../Devis \"final\".exe", S::PDF), S.file("photo", S::PNG)]).success?.should be_true
+    S.submit(token, files: [S.file("../../Devis \"final\".exe", S::PDF), S.file("photo\u202Egnp.exe", S::PNG)]).success?.should be_true
     uploads = Api.responses(S.manager).first.uploads
-    uploads.map(&.filename).should eq(["Devis _final_.pdf", "photo.png"])
+    uploads.map(&.filename).should eq(["Devis _final_.pdf", "photognp.png"])
     uploads.map(&.content_type).should eq(["application/pdf", "image/png"])
     uploads.all? { |upload| upload.attachment_id.nil? }.should be_true
   end

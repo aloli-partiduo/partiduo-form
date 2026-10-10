@@ -17,6 +17,9 @@ module Forms
         resolved = Links.resolve(token, lock: true)
         next invalid if resolved.nil?
         link, definition = resolved.link, resolved.definition
+        # Un envoi à la fois pour l'instance : les plafonds de la boîte et de
+        # la quarantaine se lisent et se respectent sans course entre liens.
+        Marten::DB::Connection.default.open(&.exec("SELECT pg_advisory_xact_lock(hashtext('partiduo.form.submit'))"))
         message = definition.success_message.to_s
         if input.trap
           # Robot : réponse de succès en apparence, rien n'est conservé.

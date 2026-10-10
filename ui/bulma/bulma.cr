@@ -24,6 +24,7 @@
 # taille et la protection CSRF.
 require "../../src/partiduo-form"
 
+require "./ext/request"
 require "./presenters"
 require "./throttle"
 require "./handlers/base"
@@ -52,6 +53,9 @@ module Forms
     # Chemin de la page publique d'un formulaire : `/f/<jeton>`.
     PUBLIC_PATH = "/f/<token:str>"
     PUBLIC_NAME = "form_public"
+
+    # Chemin écrit dans le journal du serveur pour la page publique.
+    MASKED_PATH = "/f/…"
 
     @@public_drawn = false
 

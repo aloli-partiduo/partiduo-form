@@ -348,6 +348,8 @@ module Forms
         row = Records.response!(id, lock: true)
         next Result(ResponseView).failure(Records.error(FieldError::BASE, "response.processed")) unless row.status == "received"
         processed(row, actor, status, note.strip, nil)
+        # Une réponse rejetée ne garde pas ses pièces en quarantaine.
+        Upload.filter(response_id: row.id, attachment_id__isnull: true).delete(raw: true) if status == "rejected"
         Result(ResponseView).success(Records.response_view(row))
       end
     end

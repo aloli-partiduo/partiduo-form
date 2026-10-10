@@ -24,7 +24,7 @@ private def expect_secured(response : Marten::HTTP::Response) : Nil
   response.headers["Content-Security-Policy"].should contain("default-src 'none'")
   response.headers["Content-Security-Policy"].should contain("frame-ancestors 'none'")
   response.headers["Content-Security-Policy"].should_not contain("script-src")
-  response.headers["Referrer-Policy"].should eq("no-referrer")
+  response.headers["Referrer-Policy"].should eq("same-origin")
   response.headers["Cache-Control"].should eq("no-store")
   response.headers["X-Robots-Tag"].should contain("noindex")
   response.headers["X-Frame-Options"].should eq("DENY")
@@ -116,9 +116,13 @@ describe "Page publique /f/<jeton> : surface sans authentification (D-FRM-007)" 
     forged.status.should eq(403)
     S.response_count.should eq(0)
 
-    accepted = browser.post_protected("/f/#{token}", body(S.values.merge({"csrftoken" => csrf_of(page.content)})))
+    # Un vrai navigateur envoie l'origine de la page (jamais `null`, la
+    # politique de référent est `same-origin`) : l'envoi passe.
+    accepted = browser.post_protected("/f/#{token}", body(S.values.merge({"csrftoken" => csrf_of(page.content)})),
+      headers: {"Origin" => "http://127.0.0.1"})
     accepted.status.should eq(200)
     S.response_count.should eq(1)
+    page.content.should_not contain(%(name="referrer"))
   end
 
   it "refuse un envoi trop gros (413) avant de le lire, et n'en garde rien" do
@@ -150,6 +154,12 @@ describe "Page publique /f/<jeton> : surface sans authentification (D-FRM-007)" 
     key.should_not contain(token)
     20.times { Forms::Ui::Throttle.allow?("submit_link", key).should be_true }
     Forms::Ui::Throttle.allow?("submit_link", key).should be_false
+  end
+
+  it "masque le jeton dans le chemin que lit le journal du serveur" do
+    raw = HTTP::Request.new("GET", "/f/#{"z" * 43}")
+    Marten::HTTP::Request.new(raw).partiduo_form_mask_path(Forms::Ui::MASKED_PATH)
+    raw.path.should eq("/f/…")
   end
 
   it "admet des pièces PDF et images, refuse un contenu déguisé" do

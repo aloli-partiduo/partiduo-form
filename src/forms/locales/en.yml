@@ -99,6 +99,7 @@ en:
         empty: "An attachment is empty."
         too_large: "An attachment exceeds %{max} MB."
         type: "Only PDF, PNG and JPEG files are accepted."
+        active: "This PDF contains active content (script, launch action, embedded file) or is truncated: send a plain version."
         storage_full: "Attachments are not accepted at the moment."
         forbidden: "Filing the attachments in the books requires the right to store attachments."
       response:

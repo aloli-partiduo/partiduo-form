@@ -99,6 +99,7 @@ nl:
         empty: "Een bijlage is leeg."
         too_large: "Een bijlage is groter dan %{max} MB."
         type: "Alleen PDF-, PNG- en JPEG-bestanden worden aanvaard."
+        active: "Deze PDF bevat actieve inhoud (script, startactie, ingesloten bestand) of is onvolledig: stuur een eenvoudige versie."
         storage_full: "Bijlagen worden momenteel niet aanvaard."
         forbidden: "Bijlagen in het dossier opnemen vereist het recht om bijlagen op te slaan."
       response:
