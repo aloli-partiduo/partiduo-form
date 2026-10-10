@@ -1,0 +1,105 @@
+nl:
+  form:
+    module:
+      name: "Formulieren"
+    permissions:
+      read: "Formulieren, hun links en de inbox raadplegen"
+      process: "Ontvangen antwoorden verwerken: fiche aanmaken, klasseren, weigeren, bijlage downloaden"
+      design: "Formulieren en hun velden definiëren"
+      admin: "Openbare links uitgeven en intrekken, antwoorden en formulieren wissen, opschonen"
+    menu:
+      form: "Formulieren"
+      form_inbox: "Ontvangen antwoorden"
+      form_definitions: "Formulieren"
+    kinds:
+      text: "Korte tekst"
+      textarea: "Lange tekst"
+      email: "E-mailadres"
+      phone: "Telefoon"
+      number: "Getal"
+      date: "Datum"
+      checkbox: "Selectievakje"
+      select: "Keuzelijst"
+    statuses:
+      received: "Te verwerken"
+      accepted: "Fiche aangemaakt"
+      closed: "Geklasseerd"
+      rejected: "Geweigerd"
+    link_states:
+      active: "Actief"
+      expired: "Verlopen"
+      revoked: "Ingetrokken"
+      exhausted: "Opgebruikt"
+    targets:
+      name: "Naam van de fiche"
+      email: "E-mail"
+      phone: "Telefoon"
+      contact_name: "Contactpersoon"
+      description: "Omschrijving"
+      vat_number: "Btw-nummer"
+      siren: "SIREN"
+      siret: "SIRET"
+      address:
+        line1: "Adres (regel 1)"
+        line2: "Adres (regel 2)"
+        postcode: "Postcode"
+        city: "Plaats"
+        country_code: "Land (ISO-code)"
+    errors:
+      text:
+        blank: "Dit veld is verplicht."
+        too_long: "Niet meer dan %{max} tekens."
+        encoding: "De tekst bevat onleesbare tekens."
+      retention:
+        range: "De bewaartermijn loopt van 1 tot %{max} dagen."
+      max_files:
+        range: "Het aantal bijlagen loopt van 1 tot %{max}."
+      category:
+        unknown: "Deze fichecategorie bestaat niet."
+        forbidden: "U kunt de fichecategorieën niet lezen."
+        targets: "Het veld „%{field}” verwijst naar een kenmerk dat in deze categorie ontbreekt: wijzig eerst het doel."
+      form:
+        pending: "Er wachten antwoorden op verwerking: verwerk of wis ze vóór het formulier."
+      field:
+        key_format: "De sleutel begint met een kleine letter, gevolgd door letters, cijfers of „_” (hoogstens 40)."
+        key_reserved: "De sleutel „%{value}” is voorbehouden."
+        key_taken: "Een ander veld heeft al de sleutel „%{value}”."
+        too_many: "Een formulier telt hoogstens %{max} velden."
+        kind_invalid: "Onbekend veldtype: %{value}."
+        max_length: "De maximale lengte loopt van 1 tot %{max}."
+        choices_blank: "Geef minstens één keuze op, één per regel."
+        choices_many: "Niet meer dan %{max} keuzes."
+        choice_long: "Een keuze telt hoogstens %{max} tekens."
+        target_taken: "Een ander veld vult „%{value}” al in."
+        target_no_category: "Kies eerst een fichecategorie voor het formulier."
+        target_invalid: "Onbekend doel: %{value}."
+      link:
+        expires_past: "De vervaldatum mag niet in het verleden liggen."
+        expires_far: "Een link vervalt uiterlijk binnen %{max} dagen."
+        max_uses: "Het aantal inzendingen loopt van 1 tot %{max}."
+        no_fields: "Voeg minstens één veld toe vóór u het formulier publiceert."
+        disabled: "Het formulier is uitgeschakeld."
+        revoked: "Deze link is al ingetrokken."
+        invalid: "Deze link is niet geldig of niet meer actief."
+      limits:
+        hourly: "Te veel inzendingen via deze link op dit moment: probeer het over een uur opnieuw."
+        inbox_full: "Dit formulier aanvaardt momenteel geen antwoorden."
+      value:
+        encoding: "De waarde bevat onleesbare tekens."
+        required: "Dit veld is verplicht."
+        too_long: "De waarde is te lang."
+        email: "Ongeldig e-mailadres."
+        phone: "Ongeldig telefoonnummer."
+        number: "Ongeldig getal."
+        date: "Ongeldige datum."
+        choice: "Kies een waarde uit de lijst."
+      files:
+        not_accepted: "Dit formulier aanvaardt geen bijlagen."
+        too_many: "Niet meer dan %{max} bijlagen."
+        empty: "Een bijlage is leeg."
+        too_large: "Een bijlage is groter dan %{max} MB."
+        type: "Alleen PDF-, PNG- en JPEG-bestanden worden aanvaard."
+        storage_full: "Bijlagen worden momenteel niet aanvaard."
+        forbidden: "Bijlagen in het dossier opnemen vereist het recht om bijlagen op te slaan."
+      response:
+        processed: "Dit antwoord is al verwerkt."

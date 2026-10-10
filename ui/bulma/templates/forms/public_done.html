@@ -1,0 +1,8 @@
+{# SPDX-License-Identifier: AGPL-3.0-or-later. Page publique après un envoi accepté : remerciement, sans rappel des valeurs envoyées. #}{% extend "forms/_public_base.html" %}
+{% block title %}{{ title }}{% endblock title %}
+{% block content %}
+<h1 class="pd-auth-title">{{ title }}</h1>
+<div class="notification is-success is-light" role="status">
+  {% if message %}<p>{{ message|linebreaks }}</p>{% else %}<p>{% translate "form_ui.public.thanks" %}</p>{% endif %}
+</div>
+{% endblock content %}

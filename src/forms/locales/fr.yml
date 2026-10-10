@@ -1,0 +1,105 @@
+fr:
+  form:
+    module:
+      name: "Formulaires"
+    permissions:
+      read: "Consulter les formulaires, leurs liens et la boîte de réception"
+      process: "Traiter les réponses reçues : créer la fiche, classer, rejeter, télécharger une pièce"
+      design: "Définir les formulaires et leurs champs"
+      admin: "Émettre et révoquer les liens publics, effacer réponses et formulaires, purger"
+    menu:
+      form: "Formulaires"
+      form_inbox: "Réponses reçues"
+      form_definitions: "Formulaires"
+    kinds:
+      text: "Texte court"
+      textarea: "Texte long"
+      email: "Adresse électronique"
+      phone: "Téléphone"
+      number: "Nombre"
+      date: "Date"
+      checkbox: "Case à cocher"
+      select: "Liste de choix"
+    statuses:
+      received: "À traiter"
+      accepted: "Fiche créée"
+      closed: "Classée"
+      rejected: "Rejetée"
+    link_states:
+      active: "Actif"
+      expired: "Expiré"
+      revoked: "Révoqué"
+      exhausted: "Épuisé"
+    targets:
+      name: "Nom de la fiche"
+      email: "Courriel"
+      phone: "Téléphone"
+      contact_name: "Contact"
+      description: "Description"
+      vat_number: "Numéro de TVA"
+      siren: "SIREN"
+      siret: "SIRET"
+      address:
+        line1: "Adresse (ligne 1)"
+        line2: "Adresse (ligne 2)"
+        postcode: "Code postal"
+        city: "Ville"
+        country_code: "Pays (code ISO)"
+    errors:
+      text:
+        blank: "Ce champ est obligatoire."
+        too_long: "Pas plus de %{max} caractères."
+        encoding: "Le texte contient des caractères illisibles."
+      retention:
+        range: "La durée de conservation va de 1 à %{max} jours."
+      max_files:
+        range: "Le nombre de pièces va de 1 à %{max}."
+      category:
+        unknown: "Cette catégorie de fiches n'existe pas."
+        forbidden: "Vous ne pouvez pas lire les catégories de fiches."
+        targets: "Le champ « %{field} » vise un attribut absent de cette catégorie : changez sa cible d'abord."
+      form:
+        pending: "Des réponses attendent d'être traitées : traitez-les ou effacez-les avant le formulaire."
+      field:
+        key_format: "La clé commence par une lettre minuscule, suivie de lettres, chiffres ou « _ » (40 au plus)."
+        key_reserved: "La clé « %{value} » est réservée."
+        key_taken: "Un autre champ a déjà la clé « %{value} »."
+        too_many: "Un formulaire compte au plus %{max} champs."
+        kind_invalid: "Nature de champ inconnue : %{value}."
+        max_length: "La longueur maximale va de 1 à %{max}."
+        choices_blank: "Indiquez au moins un choix, un par ligne."
+        choices_many: "Pas plus de %{max} choix."
+        choice_long: "Un choix ne dépasse pas %{max} caractères."
+        target_taken: "Un autre champ alimente déjà « %{value} »."
+        target_no_category: "Choisissez d'abord une catégorie de fiches pour le formulaire."
+        target_invalid: "Cible inconnue : %{value}."
+      link:
+        expires_past: "La date d'expiration ne peut pas être passée."
+        expires_far: "Un lien expire au plus tard dans %{max} jours."
+        max_uses: "Le nombre d'envois va de 1 à %{max}."
+        no_fields: "Ajoutez au moins un champ avant de publier le formulaire."
+        disabled: "Le formulaire est désactivé."
+        revoked: "Ce lien est déjà révoqué."
+        invalid: "Ce lien n'est pas valide ou n'est plus actif."
+      limits:
+        hourly: "Trop d'envois sur ce lien pour le moment : réessayez dans une heure."
+        inbox_full: "Ce formulaire n'accepte plus de réponses pour le moment."
+      value:
+        encoding: "La valeur contient des caractères illisibles."
+        required: "Ce champ est obligatoire."
+        too_long: "La valeur est trop longue."
+        email: "Adresse électronique invalide."
+        phone: "Numéro de téléphone invalide."
+        number: "Nombre invalide."
+        date: "Date invalide."
+        choice: "Choisissez une valeur de la liste."
+      files:
+        not_accepted: "Ce formulaire n'accepte pas de pièces jointes."
+        too_many: "Pas plus de %{max} pièces jointes."
+        empty: "Une pièce jointe est vide."
+        too_large: "Une pièce jointe dépasse %{max} Mo."
+        type: "Seuls les fichiers PDF, PNG et JPEG sont acceptés."
+        storage_full: "Les pièces jointes ne sont plus acceptées pour le moment."
+        forbidden: "Verser les pièces au dossier exige le droit d'enregistrer des pièces jointes."
+      response:
+        processed: "Cette réponse a déjà été traitée."

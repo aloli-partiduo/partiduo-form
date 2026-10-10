@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Page publique d'un formulaire (D-FRM-007) : carte plus large que celle
+   de la connexion, rubrique de confidentialité, champ piège retiré de
+   l'écran et des technologies d'assistance. Propriétés logiques, jetons
+   du thème (ADR-005 D7). */
+.pd-form-public { max-width: 40rem; }
+.pd-form-description { color: var(--pd-ink); }
+.pd-form-privacy { margin-block: 1.5rem 1rem; padding-block-start: 1rem; border-block-start: 1px solid var(--pd-rule); }
+.pd-form-privacy h2 { font-size: 1rem; font-weight: 600; color: var(--pd-ink); margin-block-end: .5rem; }
+.pd-form-privacy dd { margin-block-end: .5rem; }
+.pd-form-trap { position: absolute; inset-inline-start: -10000px; inline-size: 1px; block-size: 1px; overflow: hidden; }

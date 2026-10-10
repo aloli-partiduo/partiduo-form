@@ -1,0 +1,100 @@
+= Contrat `Forms::Api`
+:toc: left
+:toc-title: Table des matières
+:icons: font
+
+Contrat public de l'extension `FORM`, sur le modèle de `Partiduo::Api` :
+acteur en premier argument, contrôle d'accès en première ligne (extension
+active, permission), vues immuables, commandes qui rendent un `Result` avec
+des erreurs par champ (`form.errors.*`), dans une transaction. L'interface
+`ui/bulma/` ne passe que par lui.
+
+== Permissions
+
+[cols="1,3",options="header"]
+|===
+|Permission |Ouvre
+|_aucune_ (acteur anonyme admis) |`public_form`, `submit` : extension active seulement ; le jeton fait foi
+|`form.read` |`forms`, `form`, `field`, `links`, `responses` (purge les réponses échues), `response`, `pending_count`
+|`form.process` |`file` (+ `core.attachment.read` pour une pièce déjà versée), `card_draft`, `accept` (+ `cards.card.write`, + `core.attachment.write` pour verser les pièces), `close`, `reject`
+|`form.design` |`create_form`, `update_form`, `add_field`, `update_field`, `delete_field`, `move_field`
+|`form.admin` |`create_link`, `revoke_link`, `delete_form`, `delete_response`, `purge`
+|===
+
+Fonction pure : `link_key(token)` — préfixe de l'empreinte du jeton, clé de
+limitation de débit de l'interface (jamais le jeton).
+
+== Formulaires et champs
+
+* `create_form(actor, FormInput)`, `update_form(actor, id, FormInput)` —
+  `title`, `purpose`, `controller` obligatoires ; `retention_days` 1 à 1 095 ;
+  `max_files` 1 à 3 ; `category_id` lue avec les droits de l'acteur.
+  Erreurs : `text.blank`, `text.too_long`, `text.encoding`,
+  `retention.range`, `max_files.range`, `category.unknown`,
+  `category.forbidden`, `category.targets`.
+* `delete_form(actor, id)` — refusé si des réponses attendent
+  (`form.pending`) ; efface champs, liens et réponses.
+* `add_field(actor, form_id, FieldInput)`, `update_field(actor, id, FieldInput)`
+  — erreurs `field.key_format`, `.key_reserved`, `.key_taken`, `.too_many`,
+  `.kind_invalid`, `.max_length`, `.choices_blank`, `.choices_many`,
+  `.choice_long`, `.target_taken`, `.target_no_category`, `.target_invalid`.
+* `delete_field(actor, id)`, `move_field(actor, id, up)`.
+
+Natures (`FIELD_KINDS`) : `text`, `textarea`, `email`, `phone`, `number`,
+`date`, `checkbox`, `select`. Cibles (`CARD_TARGETS`) : `name`, `email`,
+`phone`, `contact_name`, `description`, `vat_number`, `siren`, `siret`,
+`address.line1`, `address.line2`, `address.postcode`, `address.city`,
+`address.country_code`, et `extra.<clé>` pour un attribut de la catégorie.
+
+== Liens publics
+
+* `create_link(actor, form_id, LinkInput) : Result(IssuedLinkView)` — le
+  jeton n'est rendu qu'ici (`token`) ; erreurs `link.expires_past`,
+  `.expires_far`, `.max_uses`, `.no_fields`, `.disabled`.
+* `revoke_link(actor, id)` — définitif ; `link.revoked` si déjà fait.
+* `LinkView#state` : `active`, `expired`, `revoked`, `exhausted`.
+
+== Page publique
+
+* `public_form(actor, token) : PublicFormView?` — titre, présentation,
+  finalité, responsable, durée de conservation, pièces admises, champs
+  (clé, libellé, nature, obligatoire, longueur, choix, aide) ; rien
+  d'autre. `nil` pour tout lien inutilisable.
+* `submit(actor, token, SubmissionInput) : Result(SubmittedView)` —
+  erreurs `link.invalid` (toujours la même), `limits.hourly`,
+  `limits.inbox_full`, `value.*` sur la clé du champ (`required`,
+  `too_long`, `encoding`, `email`, `phone`, `number`, `date`, `choice`),
+  `files.*` (`not_accepted`, `too_many`, `empty`, `too_large`, `type`,
+  `storage_full`). `trap` vrai : succès apparent, rien n'est conservé.
+
+== Boîte de réception
+
+* `responses(actor, ResponseQuery)` — `status` (`received` par défaut,
+  `nil` : toutes), `form_id`, `limit` (1 000 au plus).
+* `card_draft(actor, id) : Cards::CardInput?` — fiche proposée ; `nil` si
+  le formulaire ne vise aucune catégorie.
+* `accept(actor, id, card, store_files = true)` — crée la fiche par
+  `Partiduo::Api::Cards.create_card` avec l'acteur, verse les pièces par
+  `Partiduo::Api::Core.store_attachment`, tout ou rien ; erreurs du contrat
+  des fiches, `response.processed`, `files.forbidden`, erreurs du socle
+  sur `files`.
+* `close(actor, id, note)`, `reject(actor, id, note)` — `response.processed`
+  si déjà traitée.
+* `file(actor, upload_id) : FileView` — pièce reçue (quarantaine ou versée).
+* `delete_response(actor, id)`, `purge(actor, now)`.
+
+Statuts (`STATUSES`) : `received`, `accepted`, `closed`, `rejected`.
+
+== Limites
+
+[cols="2,1",options="header"]
+|===
+|Limite |Valeur
+|Envoi public (corps entier) |2 400 000 octets
+|Pièce, nombre de pièces |1 Mio, 3
+|Quarantaine de l'instance |200 Mio
+|Envois par lien et par heure (en base) |30
+|Réponses à traiter par formulaire |200
+|Champs par formulaire, choix par liste |30, 50
+|Expiration d'un lien, envois par lien |366 jours, 10 000
+|===

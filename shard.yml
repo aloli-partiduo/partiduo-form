@@ -1,0 +1,38 @@
+name: partiduo-form
+version: 0.1.0
+
+description: |
+  Extension des formulaires de Partiduo (ADR-003) : formulaires publiés par
+  un lien à jeton (seule surface publique sans authentification), champs
+  typés et contrôlés, pièces jointes facultatives, finalité et durée de
+  conservation affichées, boîte de réception traitée par un utilisateur
+  authentifié qui crée, s'il le décide, la fiche par le contrat du cœur ;
+  purge des réponses à l'échéance.
+
+authors:
+  - Philippe Nénert <it+claude.ai@aloli.fr>
+
+crystal: ">= 1.19.1"
+
+license: AGPL-3.0-or-later
+
+targets:
+  partiduo-form-manage:
+    main: manage.cr
+
+dependencies:
+  # Le cœur : registre, événements et contrat Partiduo::Api (fiches,
+  # pièces jointes, modules).
+  partiduo:
+    path: ../partiduo-app
+  marten:
+    path: ../../marten
+
+development_dependencies:
+  # L'interface qui monte ui/bulma/ : nécessaire aux specs et à manage.cr ;
+  # la distribution l'apporte elle-même.
+  partiduo-ui-bulma:
+    path: ../partiduo-ui-bulma
+  ameba:
+    github: crystal-ameba/ameba
+    version: "~> 1.6"

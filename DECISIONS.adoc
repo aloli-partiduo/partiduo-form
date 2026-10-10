@@ -1,0 +1,362 @@
+= partiduo-form — décisions
+:toc: left
+:toc-title: Table des matières
+:icons: font
+
+Décisions prises pendant le portage de l'extension `FORM`, quand un point
+n'était pas tranché par les ADR (contexte, choix, alternative écartée), puis
+amendements proposés au contrat du cœur et de l'interface. Les ADR ne sont
+jamais modifiés : un écart ou un complément y est proposé ici.
+
+Spécification : ADR-003 (contrat d'extension, D6 surface publique, D7
+événements ; sort des extensions amont : `noalyss-form` (FVAL, FDEF),
+2 500 lignes → « `partiduo-form`, point d'entrée public par jeton »),
+ADR-001 (limitation des tentatives plutôt que CAPTCHA), ADR-002
+(authentification), ADR-005 (interface), ADR-011 A1 (incompatibilités,
+dossier foyer). Source fonctionnelle : l'extension `noalyss-form` de NOALYSS
+(`prod-github/noalyss/noalyss-form`, la source *legacy*), dont on porte les
+fonctions et non le code.
+
+== Décisions
+
+=== D-FRM-001 — Inventaire : porté, adapté, refusé (10 octobre 2026)
+
+[cols="3,1,5",options="header"]
+|===
+|Fonction de la source legacy |Sort |Dans FORM
+
+|Définition d'un formulaire : titre, description, catégorie de fiches visée
+|Porté
+|Avec, en plus, la finalité du traitement, le responsable et la durée de
+conservation, obligatoires et affichés (D-FRM-004).
+
+|Jeton du formulaire saisi par l'utilisateur, en clair et unique
+|Adapté
+|Jeton de 256 bits *généré*, conservé en empreinte seulement ; plusieurs
+liens par formulaire, chacun avec expiration, révocation et nombre d'envois
+borné (D-FRM-006).
+
+|Paramètre reçu → attribut de la fiche, obligatoire ou facultatif
+|Adapté
+|Champs typés (clé, libellé, nature, obligatoire, longueur, choix, aide) ;
+la cible dans la fiche est facultative et ne sert qu'à *préremplir* la
+fiche proposée au traitement (D-FRM-005, D-FRM-010).
+
+|Formulaire HTML hébergé sur un site tiers, qui poste vers l'application
+avec `gDossier` et le jeton en champ caché ; exemples de relais PHP
+|Refusé
+|Le jeton est alors lisible par tout visiteur du site tiers (la source le
+déconseille elle-même) et l'envoi intersite ne peut pas être protégé contre
+la falsification. Le formulaire est servi par Partiduo, `/f/<jeton>`, sous
+protection CSRF ; on partage le lien (D-FRM-007).
+
+|Méthode d'envoi GET, POST ou REQUEST au choix
+|Refusé
+|GET affiche la page, POST envoie ; jamais de données personnelles dans
+une adresse.
+
+|Restriction à l'adresse IP de l'émetteur
+|Adapté
+|Une adresse n'identifie pas un visiteur légitime ; remplacée par le jeton
+et par la limitation de débit par adresse et par lien (D-FRM-007).
+
+|Redirection après succès ou échec vers une adresse, avec *toutes* les
+valeurs reçues en paramètres
+|Refusé
+|Redirection ouverte et données personnelles dans l'URL (journaux,
+référent). Remplacée par un message de remerciement propre au formulaire.
+
+|Contrôle des valeurs selon le type d'attribut (texte, nombre, date
+`JJ.MM.AAAA`, case, liste issue d'une requête SQL de l'attribut)
+|Adapté
+|Natures propres au formulaire : texte court ou long, courriel, téléphone,
+nombre décimal (jamais flottant), date `AAAA-MM-JJ`, case, liste de choix
+saisie (aucun SQL). Contrôles du côté serveur, valeurs nettoyées.
+
+|Valeurs « code de fiche » et « poste comptable » contrôlées contre le
+dossier
+|Refusé
+|Un visiteur anonyme ne doit ni connaître ni sonder les codes internes du
+dossier (une réponse « code inconnu » les révélerait un à un).
+
+|Réponses brutes conservées avec l'adresse IP de l'émetteur
+|Adapté
+|Copie figée des champs à la réception (clé, libellé, nature, valeur),
+sans adresse IP ni empreinte de navigateur (D-FRM-008, D-FRM-015).
+
+|Liste des demandes nouvelles ou de toutes les demandes
+|Porté
+|Boîte de réception (« À traiter », « Toutes »), filtre par formulaire,
+compteur au menu et dans « À traiter » du tableau de bord.
+
+|Détail d'une demande, valeurs modifiables, « Sauvé comme fiche » ou
+« Effacer »
+|Adapté
+|Fiche proposée d'après les cibles, à vérifier et corriger, créée par
+`Partiduo::Api::Cards.create_card` *avec l'utilisateur qui traite* ;
+« Classer sans fiche », « Rejeter » ; effacement réservé à `form.admin`
+(D-FRM-010).
+
+|Création automatique de la fiche à la réception (`insert_card`), points
+d'accroche avant et après validation
+|Refusé
+|Rien ne passe d'office dans les fiches ni en comptabilité : une réponse
+attend un utilisateur authentifié.
+
+|Droits par menu (FVAL, FDEF)
+|Adapté
+|`form.read`, `form.process`, `form.design`, `form.admin` (D-FRM-012).
+
+|Schéma installé à l'ouverture de la page, mises à jour SQL
+|Remplacé
+|Migration Marten `0001_create_form` (ADR-003 D5).
+
+|Boîtes de dialogue en JavaScript
+|Adapté
+|Écrans servis par le serveur ; la page publique n'exécute aucun script.
+
+|—
+|Ajouté
+|Pièces jointes contrôlées en quarantaine (D-FRM-009), champ piège contre
+les robots, limites de taille et de débit, en-têtes de sécurité,
+conservation bornée et purge (D-FRM-011), effacement à la demande,
+journal sans donnée personnelle (D-FRM-015).
+|===
+
+=== D-FRM-002 — Aucune dépendance déclarée (10 octobre 2026)
+
+*Contexte.* Le manifeste peut exiger des modules (`depends_on`). Les
+formulaires produisent au mieux une *fiche*, éventuellement des *pièces
+jointes*.
+
+*Choix.* Aucun `depends_on`. Fiches et pièces jointes sont du socle
+(`CARDS`, `CORE`), toujours actif ; aucune écriture comptable n'est jamais
+produite, la Comptabilité n'est donc pas requise ; le Suivi n'est pas
+employé (une prise de contact peut être suivie à la main depuis la fiche
+créée). L'extension s'active ainsi dans un dossier qui ne tient que la
+Facturation, ou que le socle.
+
+*Alternatives écartées.* `depends_on "ACCOUNTING"` : aucun usage, et
+fermerait l'extension à un dossier de facturation seule. `depends_on
+"FOLLOWUP"` pour créer une action à chaque réponse : ajouterait une écriture
+non décidée par l'utilisateur ; possible plus tard par le contrat du suivi,
+à la demande, si le besoin se confirme.
+
+=== D-FRM-003 — Dossier foyer : aucune incompatibilité (10 octobre 2026)
+
+*Contexte.* ADR-011 A1 permet `incompatible_with` ; `partiduo-amortis`
+refuse `PERSO`, `partiduo-sepa`, `-import` et `-reports` non.
+
+*Choix.* Aucune incompatibilité. Un foyer peut recueillir des coordonnées
+(association, copropriété informelle, garde partagée) ; rien n'y entre sans
+traitement, et la fiche créée est un contact.
+
+*Alternative écartée.* `incompatible_with "PERSO"` : priverait le foyer
+d'un outil sans risque pour ses comptes.
+
+=== D-FRM-004 — Définition d'un formulaire et RGPD (10 octobre 2026)
+
+*Choix.* Titre, présentation, message de remerciement, état (un formulaire
+désactivé ne répond sur aucun lien) ; *finalité du traitement*, *responsable
+du traitement* et *durée de conservation* (1 à 1 095 jours, 90 par défaut)
+obligatoires et affichés sur la page publique, avec le rappel des droits
+d'accès, de rectification et d'effacement ; catégorie de fiches visée
+(facultative, lue avec les droits du concepteur) ; pièces jointes admises ou
+non, 1 à 3. Le responsable est saisi, il n'est pas lu dans les réglages du
+dossier : la page publique ne montre que ce que le concepteur a écrit.
+
+=== D-FRM-005 — Champs typés (10 octobre 2026)
+
+*Choix.* Au plus 30 champs ; clé `[a-z][a-z0-9_]{0,39}` unique dans le
+formulaire (`csrftoken`, `files`, `website` réservés) ; huit natures : texte
+court (200 caractères par défaut, 1 000 au plus), texte long (2 000, 5 000
+au plus), courriel, téléphone, nombre (lu en `BigDecimal`, espaces et
+virgule admis), date `AAAA-MM-JJ` entre 1900 et 2200, case à cocher (une case
+obligatoire vaut consentement), liste de choix (50 au plus). Toute valeur
+est nettoyée : encodage vérifié, caractères de contrôle et d'orientation
+retirés, longueur bornée ; les clés inconnues sont ignorées. Un champ
+retiré reste dans les réponses déjà reçues.
+
+=== D-FRM-006 — Liens publics à jeton (10 octobre 2026)
+
+*Choix.* Un formulaire a autant de liens que voulu. Le jeton : 32 octets de
+`Random::Secure`, base64url (43 caractères) ; seule son empreinte SHA-256
+est conservée (unique, contrôlée en base), avec ses quatre premiers
+caractères pour le reconnaître ; il n'est montré qu'une fois, à l'émission,
+sur une page `no-store`. Un lien expire (date choisie incluse, 366 jours au
+plus), se révoque définitivement, et n'accepte qu'un nombre d'envois de 1
+(usage unique) à 10 000, compté sous verrou de ligne et contrôlé en base
+(`uses <= max_uses`). Un jeton mal formé est écarté avant toute requête ;
+la recherche se fait par l'empreinte. Le refus ne dit jamais pourquoi au
+visiteur (inconnu, expiré, révoqué, épuisé, formulaire désactivé : même page
+404) ; le journal en garde le motif avec l'indice du lien.
+
+*Alternative écartée.* Le jeton de la source, saisi et conservé en clair :
+devinable, et une fuite de la table ouvrirait tous les formulaires.
+
+=== D-FRM-007 — Page publique `/f/<jeton>` (10 octobre 2026)
+
+*Contexte.* L'interface monte les extensions sous `/ext/<CODE>/` et n'y
+admet que des utilisateurs connectés (ADR-003 D3) ; elle n'offre aucune
+route publique aux extensions. Le cœur et l'interface ont déjà des routes
+publiques à jeton (invitation, remise à zéro, déblocage), servies par des
+handlers ordinaires sous la protection CSRF de Marten, avec
+`PartiduoUi::RateLimit` par adresse.
+
+*Choix.* La route `/f/<jeton>` est ajoutée aux routes de l'instance par
+l'application Marten de l'interface de l'extension (`Forms::Ui::App#setup`,
+comme `PartiduoUi::App#setup` monte les extensions), hors de `/ext/`
+(amendement A-FRM-1). Le handler, dans l'ordre :
+
+. *débit* (`Forms::Ui::Throttle`, sur le modèle de `PartiduoUi::RateLimit`,
+  adresse lue par `PartiduoUi::RateLimit.client_ip`) : 60 affichages par
+  adresse en 10 minutes, 10 envois par adresse et 20 par lien en 10 minutes ;
+  après 10 jetons refusés en 15 minutes, l'adresse est bloquée même avec un
+  lien valide (429, `Retry-After`) ; en base, 30 envois par lien et par
+  heure, et 200 réponses à traiter au plus par formulaire ;
+. *taille* : au-delà de 2,4 Mo annoncés (`Content-Length`) ou lus, 413 avant
+  toute lecture ; au-delà de 2,5 Mo, le serveur Marten refuse avant la route ;
+. *CSRF* : protection de Marten (jeton du formulaire, contrôle de
+  l'`Origin`) ; un envoi depuis un autre site est refusé (403) ;
+. *jeton*, puis *contrôle des valeurs et des pièces* par le contrat
+  (`Forms::Api.submit`, acteur anonyme), qui ne range la réponse que dans
+  la boîte de réception.
+
+Toute réponse porte `Content-Security-Policy` (`default-src 'none'`, styles
+et polices de l'instance seulement, aucun script, `frame-ancestors 'none'`,
+`form-action 'self'`), `Referrer-Policy: no-referrer` (le jeton est dans
+l'adresse), `Cache-Control: no-store`, `X-Robots-Tag: noindex`,
+`X-Frame-Options: DENY`, `nosniff`, `Permissions-Policy`. La page n'a ni
+menu, ni script, ni donnée du dossier ; le formulaire poste vers l'adresse
+courante sans la répéter. Un champ piège invisible (`website`) rempli :
+succès apparent, rien n'est conservé ni compté. Aucun CAPTCHA (ADR-001).
+
+*Alternatives écartées.* Une route sous `/ext/FORM/` : exigerait une
+session. Modifier `partiduo-ui-bulma` pour y ajouter un montage public :
+hors du périmètre de ce portage, proposé en A-FRM-1.
+
+=== D-FRM-008 — Boîte de réception (10 octobre 2026)
+
+*Choix.* Une réponse est `received` (à traiter), `accepted` (fiche créée),
+`closed` (classée sans fiche) ou `rejected` ; elle garde une copie figée des
+champs. Statuts, date de traitement et fiche sont contrôlés en base. Le
+compteur « Réponses reçues » et la ligne « À traiter » du tableau de bord
+viennent de `Forms::Api.pending_count`.
+
+=== D-FRM-009 — Pièces jointes en quarantaine (10 octobre 2026)
+
+*Contexte.* `Partiduo::Api::Core.store_attachment` exige
+`core.attachment.write` : un anonyme ne peut pas stocker de pièce, et c'est
+voulu.
+
+*Choix.* PDF, PNG et JPEG seulement, reconnus par leur *signature* (ni le
+type annoncé ni l'extension ne comptent) ; 1 Mo par pièce, 1 à 3 par
+réponse, 200 Mo au plus en quarantaine pour toute l'instance ; nom assaini
+(sans chemin, caractères réservés remplacés, extension du type reconnu).
+Le contenu attend en base64 dans `form_upload`, effacé avec la réponse. Qui
+traite la réponse (`form.process`) peut télécharger une pièce, toujours en
+pièce jointe (`Content-Disposition: attachment`, `nosniff`, CSP `sandbox`).
+À l'acceptation, et s'il l'a demandé, les pièces sont versées au dossier
+par `store_attachment` *avec l'acteur réel* : le socle les contrôle de
+nouveau ; la copie en quarantaine est alors vidée.
+
+=== D-FRM-010 — Rien ne passe d'office : la fiche par le contrat, avec l'acteur réel (10 octobre 2026)
+
+*Choix.* L'acceptation propose une fiche de la catégorie du formulaire,
+préremplie par les cibles des champs (nom, courriel, téléphone, contact,
+description, TVA, SIREN, SIRET, adresse, attributs propres), que
+l'utilisateur vérifie et corrige ; elle est créée par
+`Partiduo::Api::Cards.create_card` avec *son* acteur : ses droits sur les
+fiches s'appliquent, `card.saved` est publié comme pour toute fiche (la
+Comptabilité, si elle est active, y rattache le compte prévu par la
+catégorie). L'opération est entière : fiche, pièces et statut, ou rien.
+Aucune écriture comptable n'est jamais produite par l'extension.
+
+=== D-FRM-011 — Conservation et purge (10 octobre 2026)
+
+*Choix.* Chaque réponse porte son échéance (`purge_after` = réception +
+durée du formulaire). Elle est effacée, pièces en quarantaine comprises :
+à chaque lecture de la boîte de réception, par le bouton « Purger »
+(`form.admin`), et par `manage form_purge`, à planifier chaque jour. Une
+réponse s'efface aussi à la demande (droit à l'effacement, `form.admin`).
+Une pièce versée au dossier et la fiche créée relèvent ensuite de la
+conservation du dossier.
+
+=== D-FRM-012 — Droits et exports (10 octobre 2026)
+
+*Choix.* `form.read` (boîte, définitions, liens sans jeton), `form.process`
+(accepter, classer, rejeter, télécharger une pièce), `form.design`
+(formulaires, champs), `form.admin` (émettre et révoquer les liens, effacer
+une réponse ou un formulaire, purger). Le cœur exige en plus
+`cards.card.write` pour créer la fiche, `core.attachment.write` pour verser
+les pièces, `cards.card.read` pour choisir une catégorie et ses attributs.
+Dans les exports CSV de la boîte, un texte reçu qui commencerait par `=`,
+`+`, `-`, `@` ou une tabulation est préfixé d'une apostrophe (injection de
+formule dans un tableur).
+
+=== D-FRM-013 — Aucun événement (10 octobre 2026)
+
+*Choix.* Ni abonnement ni événement nouveau : la liste fermée d'ADR-003 D7
+suffit (`card.saved` est publié par le cœur à la création de la fiche). Un
+événement « réponse reçue » n'aurait aucun abonné, et tout nouvel événement
+relève de l'adoption de l'utilisateur.
+
+=== D-FRM-014 — Interface (10 octobre 2026)
+
+*Choix.* Écrans authentifiés sur les gabarits génériques de l'interface
+(`ui/reference/*.html` : listes, formulaires, consultations), formulaires
+ordinaires, sans HTMX ni Opal : aucune interaction n'en a besoin. La page
+publique est une page à part, sans aucun script (CSP), qui reprend les
+feuilles de style et le gabarit de champ de l'interface.
+
+=== D-FRM-015 — Journal sans donnée personnelle (10 octobre 2026)
+
+*Choix.* Source `partiduo.form` : réponse reçue (formulaire, lien, réponse,
+nombre de pièces), refus (motif et indice du lien), purges, effacements.
+Jamais de jeton, de valeur reçue, de nom de fichier ni d'adresse IP
+(vérifié par `spec/architecture/conventions_spec.cr`). Les adresses ne
+vivent qu'en mémoire, le temps de la fenêtre de limitation.
+
+== Amendements proposés
+
+=== A-FRM-1 — Route publique d'extension dans l'interface
+
+*Constat.* `PartiduoUi::Extensions.mount` n'offre que des routes sous
+`/ext/<CODE>/`, derrière la connexion. L'extension ajoute donc `/f/<jeton>`
+directement aux routes de l'instance, dans `Forms::Ui::App#setup`.
+
+*Proposition.* Un `PartiduoUi::Extensions.public_mount(code, routes)` qui
+monte sous un préfixe réservé (`/p/<code>/`), contrôle que l'extension est
+active (404 sinon), applique un jeu d'en-têtes stricts commun et une
+limitation de débit déclarée par route. L'extension y passerait sans
+changer son contrat.
+
+=== A-FRM-2 — Rattacher une pièce jointe à une fiche
+
+*Constat.* Le contrat des fiches n'a pas de pièces jointes. Une pièce reçue
+et versée au dossier n'est citée que par `form_upload.attachment_id`, jusqu'à
+la purge de la réponse ; ensuite, aucune fiche ne la cite.
+
+*Proposition.* `Partiduo::Api::Cards.attach(actor, card_id, attachment_id)`
+et la liste des pièces dans `CardView`, que l'acceptation appellerait.
+
+=== A-FRM-3 — Contrôle de type de pièce sans stockage
+
+*Constat.* `Partiduo::Core::Attachments.signature_matches?` est interne ;
+l'extension refait le contrôle de signature pour PDF, PNG et JPEG avant la
+quarantaine (le socle recontrôle au versement).
+
+*Proposition.* `Partiduo::Api::Core.check_attachment(input)` : mêmes
+contrôles que `store_attachment` (type, signature, taille, nom), sans
+stocker ni exiger de droit, pour un contenu reçu d'un anonyme.
+
+=== A-FRM-4 — Limitation de débit partagée et journaux du mandataire
+
+*Constat.* La limitation en mémoire est propre à chaque processus, comme
+`PartiduoUi::RateLimit` ; la limite durable par lien est en base. Le jeton
+figure dans l'adresse : le journal d'accès du mandataire (nginx) l'enregistre.
+
+*Proposition.* Côté déploiement (hors de ce dépôt) : ne pas journaliser le
+chemin `/f/` en clair (format de journal qui masque le dernier segment, ou
+`access_log off` pour ce lieu), et limiter le débit de `/f/` au mandataire
+(`limit_req`).

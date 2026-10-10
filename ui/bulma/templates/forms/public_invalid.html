@@ -1,0 +1,13 @@
+{# SPDX-License-Identifier: AGPL-3.0-or-later. Page publique refusée : lien non valide (quel que soit le motif), trop de demandes ou envoi trop gros. #}{% extend "forms/_public_base.html" %}
+{% block content %}
+{% if limited %}
+<h1 class="pd-auth-title">{% translate "form_ui.public.limited_title" %}</h1>
+<p>{% translate "form_ui.public.limited" %}</p>
+{% elsif too_large %}
+<h1 class="pd-auth-title">{% translate "form_ui.public.too_large_title" %}</h1>
+<p>{% translate "form_ui.public.too_large" %}</p>
+{% else %}
+<h1 class="pd-auth-title">{% translate "form_ui.public.invalid_title" %}</h1>
+<p>{% translate "form_ui.public.invalid" %}</p>
+{% endif %}
+{% endblock content %}

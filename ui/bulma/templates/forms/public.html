@@ -1,0 +1,33 @@
+{# SPDX-License-Identifier: AGPL-3.0-or-later. Page publique d'un formulaire : présentation, champs, pièces jointes, finalité, responsable et durée de conservation (RGPD), champ piège invisible. #}{% extend "forms/_public_base.html" %}
+{% block title %}{{ title }}{% endblock title %}
+{% block content %}
+<h1 class="pd-auth-title">{{ title }}</h1>
+{% if description %}<p class="pd-form-description mb-4">{{ description|linebreaks }}</p>{% endif %}
+{% if base_errors %}<div class="notification is-danger is-light pd-alert" role="alert" id="pd-form-errors">
+  <div>{% for message in base_errors %}<p>{{ message }}</p>{% endfor %}</div>
+</div>{% endif %}
+<form method="post" enctype="multipart/form-data" novalidate>
+  {% csrf_input %}
+  {% for field in fields %}{% include "ui/_field.html" %}{% endfor %}
+  {% if accepts_files %}<div class="field">
+    <label class="label" for="pd-f-files">{% translate "form_ui.public.files" %}</label>
+    <div class="control"><input class="input" type="file" id="pd-f-files" name="files" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"{% if max_files_many %} multiple{% endif %} aria-describedby="pd-f-files-help{% if file_errors %} pd-f-files-errors{% endif %}"></div>
+    <p class="help" id="pd-f-files-help">{{ files_help }}</p>
+    {% include "ui/_errors.html" with messages=file_errors, id="pd-f-files-errors" %}
+  </div>{% endif %}
+  <div class="pd-form-trap" aria-hidden="true">
+    <label for="pd-f-website">{% translate "form_ui.public.trap" %}</label>
+    <input type="text" id="pd-f-website" name="website" value="" tabindex="-1" autocomplete="off">
+  </div>
+  <section class="pd-form-privacy" aria-labelledby="pd-form-privacy-title">
+    <h2 id="pd-form-privacy-title">{% translate "form_ui.public.privacy" %}</h2>
+    <dl class="pd-dl">
+      <dt>{% translate "form_ui.public.purpose" %}</dt><dd>{{ purpose|linebreaks }}</dd>
+      <dt>{% translate "form_ui.public.controller" %}</dt><dd>{{ controller }}</dd>
+      <dt>{% translate "form_ui.public.retention_label" %}</dt><dd>{{ retention }}</dd>
+    </dl>
+    <p class="pd-muted">{% translate "form_ui.public.rights" %}</p>
+  </section>
+  <button class="button is-primary pd-touch" type="submit">{% translate "form_ui.public.submit" %}</button>
+</form>
+{% endblock content %}

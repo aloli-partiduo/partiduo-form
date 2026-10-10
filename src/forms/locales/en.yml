@@ -1,0 +1,105 @@
+en:
+  form:
+    module:
+      name: "Forms"
+    permissions:
+      read: "View forms, their links and the inbox"
+      process: "Process received responses: create the card, file, reject, download an attachment"
+      design: "Define forms and their fields"
+      admin: "Issue and revoke public links, erase responses and forms, purge"
+    menu:
+      form: "Forms"
+      form_inbox: "Received responses"
+      form_definitions: "Forms"
+    kinds:
+      text: "Short text"
+      textarea: "Long text"
+      email: "Email address"
+      phone: "Phone"
+      number: "Number"
+      date: "Date"
+      checkbox: "Checkbox"
+      select: "Choice list"
+    statuses:
+      received: "To process"
+      accepted: "Card created"
+      closed: "Filed"
+      rejected: "Rejected"
+    link_states:
+      active: "Active"
+      expired: "Expired"
+      revoked: "Revoked"
+      exhausted: "Used up"
+    targets:
+      name: "Card name"
+      email: "Email"
+      phone: "Phone"
+      contact_name: "Contact"
+      description: "Description"
+      vat_number: "VAT number"
+      siren: "SIREN"
+      siret: "SIRET"
+      address:
+        line1: "Address (line 1)"
+        line2: "Address (line 2)"
+        postcode: "Postcode"
+        city: "City"
+        country_code: "Country (ISO code)"
+    errors:
+      text:
+        blank: "This field is required."
+        too_long: "No more than %{max} characters."
+        encoding: "The text contains unreadable characters."
+      retention:
+        range: "The retention period ranges from 1 to %{max} days."
+      max_files:
+        range: "The number of attachments ranges from 1 to %{max}."
+      category:
+        unknown: "This card category does not exist."
+        forbidden: "You cannot read card categories."
+        targets: "Field “%{field}” targets an attribute this category does not have: change its target first."
+      form:
+        pending: "Responses are waiting to be processed: process or erase them before the form."
+      field:
+        key_format: "The key starts with a lowercase letter, followed by letters, digits or “_” (40 at most)."
+        key_reserved: "The key “%{value}” is reserved."
+        key_taken: "Another field already has the key “%{value}”."
+        too_many: "A form has at most %{max} fields."
+        kind_invalid: "Unknown field type: %{value}."
+        max_length: "The maximum length ranges from 1 to %{max}."
+        choices_blank: "Enter at least one choice, one per line."
+        choices_many: "No more than %{max} choices."
+        choice_long: "A choice is at most %{max} characters long."
+        target_taken: "Another field already fills “%{value}”."
+        target_no_category: "First choose a card category for the form."
+        target_invalid: "Unknown target: %{value}."
+      link:
+        expires_past: "The expiry date cannot be in the past."
+        expires_far: "A link expires within %{max} days at most."
+        max_uses: "The number of submissions ranges from 1 to %{max}."
+        no_fields: "Add at least one field before publishing the form."
+        disabled: "The form is disabled."
+        revoked: "This link is already revoked."
+        invalid: "This link is not valid or no longer active."
+      limits:
+        hourly: "Too many submissions on this link right now: try again in an hour."
+        inbox_full: "This form is not accepting responses at the moment."
+      value:
+        encoding: "The value contains unreadable characters."
+        required: "This field is required."
+        too_long: "The value is too long."
+        email: "Invalid email address."
+        phone: "Invalid phone number."
+        number: "Invalid number."
+        date: "Invalid date."
+        choice: "Choose a value from the list."
+      files:
+        not_accepted: "This form does not accept attachments."
+        too_many: "No more than %{max} attachments."
+        empty: "An attachment is empty."
+        too_large: "An attachment exceeds %{max} MB."
+        type: "Only PDF, PNG and JPEG files are accepted."
+        storage_full: "Attachments are not accepted at the moment."
+        forbidden: "Filing the attachments in the books requires the right to store attachments."
+      response:
+        processed: "This response has already been processed."
