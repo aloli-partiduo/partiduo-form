@@ -2,56 +2,40 @@
 
 module Forms
   module Ui
-    # `/f/<jeton>` : page publique d'un formulaire, seule surface de
-    # Partiduo ouverte sans authentification (D-FRM-007). Dans l'ordre :
+    # `/p/form/<jeton>` : page publique d'un formulaire, seule surface de
+    # Partiduo ouverte sans authentification (D-FRM-007), montée par
+    # `PartiduoUi::Extensions.public_mount` (D-FRM-017). L'interface a
+    # déjà, avant ce handler : rendu 404 si l'extension est inactive,
+    # appliqué le débit par adresse de la route (429) et la limite de
+    # taille annoncée (413). Puis, dans l'ordre :
     #
-    # . limitation de débit : adresse bloquée après trop de jetons refusés,
-    #   affichages par adresse, envois par adresse et par lien (429) ;
-    # . taille : un envoi plus gros que `Api::MAX_BODY_BYTES` est refusé
-    #   (413) avant toute lecture du corps ;
+    # . limitation propre : adresse bloquée après trop de jetons refusés,
+    #   envois par adresse et par lien (429) ;
+    # . taille : un envoi plus gros que `Api::MAX_BODY_BYTES`, une fois lu
+    #   (envoi sans taille annoncée), est refusé (413) ;
     # . protection CSRF de Marten (jeton du formulaire, origine) : un envoi
     #   depuis un autre site est refusé (403) ;
     # . jeton : inconnu, expiré, révoqué, épuisé ou formulaire désactivé,
     #   même page « lien non valide » (404) ;
     # . contrôle des valeurs et des pièces par le contrat, qui ne range la
-    #   réponse que dans la boîte de réception.
+    #   réponse que dans la boîte de réception, sous sa limite durable en
+    #   base (envois par lien et par heure, réponses à traiter).
     #
-    # Toute réponse porte des en-têtes de sécurité stricts (aucun script,
-    # aucune ressource tierce, pas de cadre, pas de cache, pas d'indexation,
-    # pas de référent : le jeton est dans l'adresse). La page ne montre que
-    # ce que le formulaire décrit ; aucune donnée du dossier.
+    # Toute réponse reçoit de l'interface les en-têtes stricts communs
+    # (`PartiduoUi::Extensions::PUBLIC_HEADERS` : aucun script, aucune
+    # ressource tierce, pas de cadre, pas de cache, pas d'indexation,
+    # référent `same-origin`). La page ne montre que ce que le formulaire
+    # décrit ; aucune donnée du dossier.
     class PublicHandler < PartiduoUi::Handler
       alias Api = Forms::Api
-
-      SECURITY_HEADERS = {
-        "Content-Security-Policy" => "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; " \
-                                     "form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
-        # `same-origin` et non `no-referrer` : sous `no-referrer`, le
-        # navigateur envoie `Origin: null` avec le formulaire, que la
-        # protection CSRF refuserait ; le jeton ne part toujours vers
-        # aucun autre site.
-        "Referrer-Policy"              => "same-origin",
-        "Cache-Control"                => "no-store",
-        "Pragma"                       => "no-cache",
-        "X-Robots-Tag"                 => "noindex, nofollow, noarchive",
-        "X-Frame-Options"              => "DENY",
-        "X-Content-Type-Options"       => "nosniff",
-        "Permissions-Policy"           => "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
-        "Cross-Origin-Resource-Policy" => "same-origin",
-        "Cross-Origin-Opener-Policy"   => "same-origin",
-      }
 
       # Nom du champ piège, invisible pour une personne (D-FRM-007).
       TRAP = "website"
 
       def process_dispatch : Marten::HTTP::Response
-        secured(preflight || super)
+        preflight || super
       rescue Marten::HTTP::Errors::RequestBodyTooBig
-        secured(too_large)
-      ensure
-        # Le journal des requêtes du serveur écrit le chemin *après* la
-        # réponse : il n'y verra que `/f/…` et jamais le jeton (D-FRM-015).
-        request.partiduo_form_mask_path(Ui::MASKED_PATH)
+        too_large
       end
 
       def get
@@ -86,16 +70,14 @@ module Forms
         Socket::IPAddress.valid?(address) ? address : "invalide"
       end
 
-      # Contrôles faits avant la protection CSRF et la lecture du corps.
+      # Contrôles faits avant la protection CSRF et la lecture du corps ; le
+      # débit par adresse de toutes les requêtes et la taille annoncée ont
+      # été contrôlés par l'interface.
       private def preflight : Marten::HTTP::Response?
         return too_many if Throttle.exceeded?("invalid", ip)
         if request.post?
-          length = request.headers["Content-Length"]?.try(&.to_i64?)
-          return too_large if length && length > Api::MAX_BODY_BYTES
           return too_many unless Throttle.allow?("submit_ip", ip)
           return too_many unless Throttle.allow?("submit_link", Forms::Api.link_key(token))
-        else
-          return too_many unless Throttle.allow?("view", ip)
         end
         nil
       end
@@ -165,10 +147,33 @@ module Forms
       private def too_large : Marten::HTTP::Response
         render("forms/public_invalid.html", {"too_large" => true}, status: 413)
       end
+    end
+  end
+end
 
-      private def secured(response : Marten::HTTP::Response) : Marten::HTTP::Response
-        SECURITY_HEADERS.each { |name, value| response.headers[name] = value }
+module Forms
+  module Ui
+    # `/f/<jeton>` : *ancienne* adresse de la page publique, gardée pour les
+    # liens déjà remis au public (D-FRM-017). Redirection permanente `308`
+    # vers `/p/form/<jeton>`, quelle que soit la méthode : un envoi depuis
+    # une page affichée avant le changement d'adresse est renvoyé tel quel
+    # (méthode et corps gardés, contrairement à `301` qui le changerait en
+    # `GET` et perdrait la réponse) et la nouvelle adresse le contrôle
+    # entièrement (débit, taille, CSRF, jeton, limite durable en base). Ce
+    # handler ne lit ni le corps ni la base et ne vérifie pas le jeton
+    # CSRF : il ne change rien ; la nouvelle adresse le vérifie.
+    class LegacyPublicHandler < Marten::Handlers::Base
+      protect_from_forgery false
+
+      def dispatch : Marten::HTTP::Response
+        location = "#{PartiduoUi::Extensions::PUBLIC_PREFIX}#{Forms::CODE.downcase}/" \
+                   "#{URI.encode_path_segment(params["token"].to_s)}"
+        response = Marten::HTTP::Response.new(content: "", content_type: "text/plain; charset=utf-8", status: 308)
+        response.headers["Location"] = location
+        PartiduoUi::Extensions::PUBLIC_HEADERS.each { |name, value| response.headers[name] = value }
         response
+      ensure
+        request.partiduo_form_mask_path(Ui::MASKED_LEGACY_PATH)
       end
     end
   end

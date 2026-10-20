@@ -42,7 +42,8 @@ module Forms
           errors << Records.error(field.key!, error) if error
           {"key" => field.key!, "label" => field.label!, "kind" => field.kind!, "value" => value}
         end
-        errors.concat(Files.errors(definition, input.files))
+        file_errors, files = Files.check(definition, input.files)
+        errors.concat(file_errors)
         next Result(Api::SubmittedView).failure(errors) unless errors.empty?
 
         response = Response.create!(
@@ -50,12 +51,10 @@ module Forms
           data: JSON.parse(data.to_json), received_at: now,
           purge_after: now + definition.retention_days!.days,
         )
-        input.files.each do |file|
-          type = Files.detect(file.content) || raise "type de pièce non reconnu après contrôle"
+        files.each do |file|
           Upload.create!(
-            response_id: response.id, filename: Files.clean_filename(file.filename, type), content_type: type,
-            byte_size: file.content.size, sha256: Files.sha256(file.content),
-            content: Base64.strict_encode(file.content),
+            response_id: response.id, filename: file.filename, content_type: file.content_type,
+            byte_size: file.content.size, sha256: file.sha256, content: Base64.strict_encode(file.content),
           )
         end
         link.uses = link.uses! + 1

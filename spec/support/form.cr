@@ -10,9 +10,12 @@ ensure
   previous.nil? ? ENV.delete("PARTIDUO_MODULES") : (ENV["PARTIDUO_MODULES"] = previous)
 end
 
-# La limitation de débit de la page publique est tenue en mémoire : chaque
-# exemple repart de zéro.
-Spec.before_each { Forms::Ui::Throttle.reset! }
+# La limitation de débit de la page publique (celle de l'interface et celle
+# de l'extension) est tenue en mémoire : chaque exemple repart de zéro.
+Spec.before_each do
+  Forms::Ui::Throttle.reset!
+  PartiduoUi::RateLimit.reset!
+end
 
 class PartiduoUi::Browser
   # Formulaire `multipart/form-data` (pièces jointes) : `files` donne, pour

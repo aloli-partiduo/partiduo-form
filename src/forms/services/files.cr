@@ -3,51 +3,44 @@
 module Forms
   # Pièces jointes reçues par la page publique (D-FRM-009) : PDF, PNG ou
   # JPEG, reconnus par leur signature et non par le type annoncé ou
-  # l'extension du nom ; taille, nombre et volume en quarantaine bornés ;
-  # nom de fichier assaini. Interne.
+  # l'extension du nom, puis contrôlés par la règle du socle sans être
+  # stockés (`Partiduo::Api::Core.detect_attachment_type` et
+  # `check_attachment`, D-FRM-018) ; taille, nombre et volume en
+  # quarantaine bornés par l'extension ; nom de fichier assaini. Interne.
   module Files
     alias Api = Forms::Api
     alias FieldError = Partiduo::Api::FieldError
-
-    PDF  = "%PDF-".to_slice
-    PNG  = Bytes[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
-    JPEG = Bytes[0xFF, 0xD8, 0xFF]
+    alias Core = Partiduo::Api::Core
 
     MAX_FILENAME = 120
 
-    # Type reconnu par la signature du contenu ; `nil` si aucun n'est admis.
+    # Pièce admise en quarantaine : nom assaini, type reconnu, contenu et
+    # empreinte donnés par le contrôle du socle.
+    record Checked, filename : String, content_type : String, content : Bytes, sha256 : String
+
+    # Type reconnu par la signature du contenu, parmi ceux qu'admet le
+    # formulaire (`Api::FILE_TYPES`) ; `nil` si aucun ne convient.
     def self.detect(bytes : Bytes) : String?
-      if starts_with?(bytes, PDF)
-        "application/pdf"
-      elsif starts_with?(bytes, PNG)
-        "image/png"
-      elsif starts_with?(bytes, JPEG)
-        "image/jpeg"
-      end
+      Core.detect_attachment_type(bytes, Api::FILE_TYPES.keys)
     end
 
-    def self.errors(definition : Definition, files : Array(Api::FileInput)) : Array(FieldError)
+    # Erreurs (champ `files`) et pièces contrôlées, prêtes pour la
+    # quarantaine.
+    def self.check(definition : Definition, files : Array(Api::FileInput)) : {Array(FieldError), Array(Checked)}
       errors = [] of FieldError
-      return errors if files.empty?
+      checked = [] of Checked
+      return {errors, checked} if files.empty?
       unless definition.accepts_files!
         errors << Records.error("files", "files.not_accepted")
-        return errors
+        return {errors, checked}
       end
       if files.size > definition.max_files!
         errors << Records.error("files", "files.too_many", {"max" => definition.max_files!.to_s})
-        return errors
+        return {errors, checked}
       end
       files.each do |file|
-        type = detect(file.content)
-        if file.content.empty?
-          errors << Records.error("files", "files.empty")
-        elsif file.content.size > Api::MAX_FILE_BYTES
-          errors << Records.error("files", "files.too_large", {"max" => (Api::MAX_FILE_BYTES // 1_048_576).to_s})
-        elsif type.nil?
-          errors << Records.error("files", "files.type")
-        elsif type == "application/pdf" && active_pdf?(file.content)
-          errors << Records.error("files", "files.active")
-        end
+        error, item = check_file(file)
+        error ? errors.concat(error) : (checked << item.as(Checked))
       end
       if errors.empty?
         size = files.sum(&.content.size).to_i64
@@ -56,7 +49,30 @@ module Forms
           errors << Records.error("files", "files.storage_full")
         end
       end
-      errors
+      {errors, checked}
+    end
+
+    # Contrôle d'une pièce : règles de l'extension (taille, type admis par
+    # le formulaire, PDF sans contenu actif), puis règle du socle sans
+    # stockage.
+    private def self.check_file(file : Api::FileInput) : {Array(FieldError)?, Checked?}
+      type = detect(file.content)
+      error = if file.content.empty?
+                Records.error("files", "files.empty")
+              elsif file.content.size > Api::MAX_FILE_BYTES
+                Records.error("files", "files.too_large", {"max" => (Api::MAX_FILE_BYTES // 1_048_576).to_s})
+              elsif type == "application/pdf" && active_pdf?(file.content)
+                Records.error("files", "files.active")
+              end
+      return {[error], nil} if error
+      return {[Records.error("files", "files.type")], nil} unless type
+      input = Core::AttachmentInput.new(clean_filename(file.filename, type), type, IO::Memory.new(file.content))
+      result = Core.check_attachment(Partiduo::Api::Actor.anonymous, input)
+      if view = result.value?
+        {nil, Checked.new(view.filename, view.content_type, file.content, view.sha256)}
+      else
+        {result.errors.map { |item| FieldError.new("files", item.key, item.params) }, nil}
+      end
     end
 
     # PDF à contenu actif (JavaScript, lancement d'application, fichier
@@ -96,14 +112,6 @@ module Forms
       stem = "piece" if stem.empty?
       extension = Api::FILE_TYPES[content_type]
       "#{stem[0, MAX_FILENAME - extension.size]}#{extension}"
-    end
-
-    def self.sha256(bytes : Bytes) : String
-      OpenSSL::Digest.new("SHA256").update(bytes).final.hexstring
-    end
-
-    private def self.starts_with?(bytes : Bytes, prefix : Bytes) : Bool
-      bytes.size >= prefix.size && bytes[0, prefix.size] == prefix
     end
   end
 end

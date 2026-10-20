@@ -63,6 +63,72 @@ describe "Formulaires : traitement par un utilisateur authentifié (D-FRM-010, D
     String.new(Api.file(S.processor, accepted.uploads.first.id).content).should eq(S::PDF)
   end
 
+  it "rattache à la fiche créée les pièces versées (Cards.attach), avec l'acteur réel (D-FRM-019)" do
+    S.setup
+    response = received([S.file("devis.pdf", S::PDF), S.file("plan.png", S::PNG)])
+    draft = Api.card_draft(S.processor, response.id) || raise "fiche proposée attendue"
+    cards_before = Partiduo::Cards::Card.all.count
+    # Verser sans pouvoir lire les pièces : refusé avant toute écriture.
+    unreadable = S.processor(["cards.card.read", "cards.card.write", "core.attachment.write"])
+    Api.accept(unreadable, response.id, draft).error_keys.should eq(["form.errors.files.forbidden"])
+    Partiduo::Cards::Card.all.count.should eq(cards_before)
+    Partiduo::Core::Attachment.all.count.should eq(0)
+
+    accepted = Api.accept(S.processor, response.id, draft).value!
+    card_id = accepted.card_id || raise "fiche attendue"
+    stored = accepted.uploads.compact_map(&.attachment_id)
+    stored.size.should eq(2)
+    Partiduo::Api::Cards.card_attachments(S.processor, card_id).map(&.id).should eq(stored)
+    Partiduo::Api::Cards.card(S.processor, card_id).attachments.map(&.filename).should eq(["devis.pdf", "plan.png"])
+    # Pièce citée par la fiche : le socle refuse de la supprimer, même
+    # après la purge de la réponse.
+    Api.purge(S.manager, SPEC_NOW + 400.days)
+    Partiduo::Api::Core.delete_attachment(S.system, stored.first).error_keys.should eq(["core.errors.attachment.in_use"])
+    Partiduo::Api::Cards.card_attachments(S.system, card_id).size.should eq(2)
+  end
+
+  it "ne verse ni ne rattache rien quand l'acteur garde les pièces en quarantaine" do
+    S.setup
+    response = received([S.file("devis.pdf", S::PDF)])
+    draft = Api.card_draft(S.processor, response.id) || raise "fiche proposée attendue"
+    accepted = Api.accept(S.processor, response.id, draft, store_files: false).value!
+    accepted.uploads.first.attachment_id.should be_nil
+    Partiduo::Api::Cards.card_attachments(S.system, (accepted.card_id || raise "fiche attendue")).should be_empty
+  end
+
+  it "reprend les réponses acceptées avant le rattachement : pièces rattachées une fois, en ligne de commande" do
+    S.setup
+    response = received([S.file("devis.pdf", S::PDF)])
+    draft = Api.card_draft(S.processor, response.id) || raise "fiche proposée attendue"
+    accepted = Api.accept(S.processor, response.id, draft).value!
+    card_id = (accepted.card_id || raise "fiche attendue")
+    attachment_id = (accepted.uploads.first.attachment_id || raise "pièce versée attendue")
+    # État d'une réponse acceptée par une version antérieure : pièce versée,
+    # citée par la seule réponse.
+    Partiduo::Api::Cards.detach(S.system, card_id, attachment_id).value!
+    Partiduo::Api::Cards.card_attachments(S.system, card_id).should be_empty
+
+    expect_raises(Partiduo::Api::Forbidden) { Api.attach_accepted_files(S.processor) }
+    output = IO::Memory.new
+    Forms::Commands::AttachFiles.new([] of String, stdout: output, stderr: IO::Memory.new, exit_raises: true)
+      .handle.should eq(0)
+    output.to_s.should contain(%("responses":1))
+    Partiduo::Api::Cards.card_attachments(S.system, card_id).map(&.id).should eq([attachment_id])
+    # Idempotente.
+    Api.attach_accepted_files(S.manager).should eq(1)
+    Partiduo::Api::Cards.card_attachments(S.system, card_id).size.should eq(1)
+  end
+
+  it "passe, à la reprise, une réponse dont la fiche a été supprimée" do
+    S.setup
+    response = received([S.file("devis.pdf", S::PDF)])
+    draft = Api.card_draft(S.processor, response.id) || raise "fiche proposée attendue"
+    accepted = Api.accept(S.processor, response.id, draft).value!
+    card_id = (accepted.card_id || raise "fiche attendue")
+    Partiduo::Api::Cards.delete_card(S.system, card_id).value!
+    Api.attach_accepted_files(S.manager).should eq(0)
+  end
+
   it "classe ou rejette une réponse sans fiche ; le téléchargement d'une pièce exige form.process" do
     S.setup
     response = received([S.file("devis.pdf", S::PDF)])

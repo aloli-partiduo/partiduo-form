@@ -23,8 +23,8 @@ module Forms
           summary = view.summary
           Table::Row.new([
             Table::Cell.new(fmt.datetime(view.received_at), url, sort: view.received_at.to_rfc3339),
-            Table::Cell.new(view.form_title, csv: Ui.csv_safe(view.form_title)),
-            Table::Cell.new(summary.size > 80 ? "#{summary[0, 80]}…" : summary, url, csv: Ui.csv_safe(summary)),
+            Table::Cell.new(view.form_title),
+            Table::Cell.new(summary.size > 80 ? "#{summary[0, 80]}…" : summary, url, csv: summary),
             Table::Cell.new(view.uploads.size.to_s),
             Table::Cell.new(I18n.t(view.status_key)),
             Table::Cell.new(fmt.date(view.purge_after), sort: date_key(view.purge_after)),
@@ -103,7 +103,7 @@ module Forms
         ]
         rows = view.values.map do |value|
           text = value.kind == "checkbox" ? yes_no(value.value == "1") : value.value
-          Table::Row.new([Table::Cell.new(value.label), Table::Cell.new(text, csv: Ui.csv_safe(text))])
+          Table::Row.new([Table::Cell.new(value.label), Table::Cell.new(text)])
         end
         Table.new(I18n.t("form_ui.response.values"), columns, rows, Ui.url("response", id: view.id), id: "form-values")
       end
@@ -119,7 +119,7 @@ module Forms
           url = can_process? ? Ui.url("file", id: upload.id) : nil
           state = upload.attachment_id ? "form_ui.response.file_stored" : "form_ui.response.file_quarantine"
           Table::Row.new([
-            Table::Cell.new(upload.filename, url, csv: Ui.csv_safe(upload.filename)),
+            Table::Cell.new(upload.filename, url),
             Table::Cell.new(upload.content_type),
             Table::Cell.new(I18n.t("form_ui.response.kilobytes", count: (upload.byte_size + 1023) // 1024)),
             Table::Cell.new(I18n.t(state)),

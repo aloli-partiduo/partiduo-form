@@ -10,7 +10,8 @@ n'est pas un projet officiel NOALYSS.
 Ce dépôt est l'extension `FORM` de Partiduo (ADR-003), successeur de
 l'extension `noalyss-form` (FVAL, FDEF ; la source *legacy*) : on en porte
 les fonctions, pas le code. Un formulaire se publie par un *lien à jeton*
-(`/f/<jeton>`), seule surface de Partiduo ouverte sans authentification ; les
+(`/p/form/<jeton>`, l'ancienne adresse `/f/<jeton>` y redirige), seule surface
+de Partiduo ouverte sans authentification ; les
 réponses arrivent dans une boîte de réception, et un utilisateur authentifié
 décide : créer la fiche (par le contrat du cœur, avec ses droits), classer,
 rejeter. Rien n'entre d'office dans les fiches ni en comptabilité.
@@ -38,14 +39,17 @@ date, case, liste de choix), cible facultative dans la fiche.
 révocation, usage unique ou nombre d'envois borné.
 
 |Page publique
-|Limitation de débit par adresse et par lien, taille bornée, protection
-CSRF, en-têtes stricts sans script, champ piège, rappel de la finalité, du
-responsable, de la conservation et des droits.
+|Montée par l'interface sous `/p/form/` (route publique d'extension) ;
+limitation de débit par adresse et par lien, limite durable en base, taille
+bornée, protection CSRF, en-têtes stricts sans script, champ piège, rappel
+de la finalité, du responsable, de la conservation et des droits. Liens
+remis avant la version 0.1.4 (`/f/<jeton>`) : redirection `308`.
 
 |Boîte de réception
 |À traiter / toutes, compteur au menu et au tableau de bord ; fiche
-proposée, vérifiée puis créée par `Partiduo::Api::Cards` ; pièces versées
-au dossier par `store_attachment` ; classer, rejeter, effacer.
+proposée, vérifiée puis créée par `Partiduo::Api::Cards` ; pièces contrôlées
+à la réception par la règle du socle, versées au dossier par
+`store_attachment` et rattachées à la fiche ; classer, rejeter, effacer.
 
 |Conservation
 |Purge des réponses échues à la lecture, à la demande et par
@@ -58,19 +62,20 @@ au dossier par `store_attachment` ; classer, rejeter, effacer.
 ----
 src/
 ├── partiduo-form.cr          # point d'entrée du shard
-├── partiduo-form/cli.cr      # migrations et purge : require "partiduo-form/cli"
+├── partiduo-form/cli.cr      # migrations et commandes : require "partiduo-form/cli"
 └── forms/                    # métier (application Marten « form »)
     ├── app.cr, manifest.cr   # code FORM, permissions, menus
     ├── models/               # tables form_*
     ├── migrations/           # 0001 : tables et contraintes
     ├── services/             # jetons, contrôles, envois, traitement, purge (interne)
     ├── api/                  # contrat public Forms::Api
-    ├── commands/             # manage form_purge
+    ├── commands/             # manage form_purge, form_attach_files
     └── locales/              # fr, en, nl
 ui/
 └── bulma/                    # interface pour partiduo-ui-bulma (application « form_ui »)
-    ├── bulma.cr              # routes sous /ext/FORM/ et page publique /f/<jeton>
-    ├── throttle.cr           # limitation de débit de la page publique
+    ├── bulma.cr              # routes sous /ext/FORM/, page publique /p/form/<jeton>, redirection /f/
+    ├── throttle.cr           # limitation de débit propre à la page publique
+    ├── ext/                  # masquage du jeton dans le journal du serveur
     ├── handlers/, templates/forms/, assets/forms/, locales/
 ----
 
@@ -89,9 +94,12 @@ L'extension ne dépend d'aucun module (fiches et pièces jointes sont du
 socle) ; elle s'active par dossier (`Partiduo::Api::Modules.activate`,
 écran « Modules »), y compris dans un dossier foyer.
 
-À l'exploitation : planifier `partiduo-manage form_purge` chaque jour, et ne
-pas journaliser en clair les chemins `/f/` au mandataire (le jeton est dans
-l'adresse ; DECISIONS A-FRM-4).
+À l'exploitation : planifier `partiduo-manage form_purge` chaque jour ;
+après la mise à jour vers 0.1.4, lancer une fois
+`partiduo-manage form_attach_files` (rattache à leur fiche les pièces des
+réponses déjà acceptées) ; ne pas journaliser en clair les chemins `/f/` *et*
+`/p/form/` au mandataire (le jeton est dans l'adresse), y écraser
+`X-Real-IP` par l'adresse du client (DECISIONS A-FRM-4, D-FRM-017).
 
 == Développement local
 
@@ -125,7 +133,6 @@ scripts/override-local.sh   # retour au mode local
 
 [source,sh]
 ----
-cd prod-crystal/partiduo/partiduo-form
 SKIP_MARTEN_CLI_PRECOMPILATION=1 shards install
 createdb -h /tmp partiduo_test_<agent>
 DATABASE_URL='postgres:///partiduo_test_<agent>?host=/tmp' crystal spec --order random

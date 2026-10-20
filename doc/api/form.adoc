@@ -16,9 +16,9 @@ des erreurs par champ (`form.errors.*`), dans une transaction. L'interface
 |Permission |Ouvre
 |_aucune_ (acteur anonyme admis) |`public_form`, `submit` : extension active seulement ; le jeton fait foi
 |`form.read` |`forms`, `form`, `field`, `links`, `responses` (purge les réponses échues), `response`, `pending_count`
-|`form.process` |`file` (+ `core.attachment.read` pour une pièce déjà versée), `card_draft`, `accept` (+ `cards.card.write`, + `core.attachment.write` pour verser les pièces), `close`, `reject`
+|`form.process` |`file` (+ `core.attachment.read` pour une pièce déjà versée), `card_draft`, `accept` (+ `cards.card.write`, + `core.attachment.write` et `core.attachment.read` pour verser les pièces et les rattacher à la fiche), `close`, `reject`
 |`form.design` |`create_form`, `update_form`, `add_field`, `update_field`, `delete_field`, `move_field`
-|`form.admin` |`create_link`, `revoke_link`, `delete_form`, `delete_response`, `purge`
+|`form.admin` |`create_link`, `revoke_link`, `delete_form`, `delete_response`, `purge`, `attach_accepted_files` (+ droits de `Cards.attach`)
 |===
 
 Fonction pure : `link_key(token)` — préfixe de l'empreinte du jeton, clé de
@@ -56,6 +56,15 @@ Natures (`FIELD_KINDS`) : `text`, `textarea`, `email`, `phone`, `number`,
 
 == Page publique
 
+Adresse : `/p/form/<jeton>` (route `form_public:form`), montée sans session
+par `PartiduoUi::Extensions.public_mount` (D-FRM-017) : l'interface rend
+404 si l'extension est inactive, applique le débit par adresse de la route
+(60 requêtes en 10 minutes, 429 et `Retry-After`) et la limite de taille
+annoncée (413), et pose les en-têtes stricts communs. L'ancienne adresse
+`/f/<jeton>` (liens remis avant la version 0.1.4) répond `308` vers la
+nouvelle, méthode et corps gardés. Les liens émis depuis pointent vers
+`/p/form/<jeton>`.
+
 * `public_form(actor, token) : PublicFormView?` — titre, présentation,
   finalité, responsable, durée de conservation, pièces admises, champs
   (clé, libellé, nature, obligatoire, longueur, choix, aide) ; rien
@@ -65,7 +74,11 @@ Natures (`FIELD_KINDS`) : `text`, `textarea`, `email`, `phone`, `number`,
   `limits.inbox_full`, `value.*` sur la clé du champ (`required`,
   `too_long`, `encoding`, `email`, `phone`, `number`, `date`, `choice`),
   `files.*` (`not_accepted`, `too_many`, `empty`, `too_large`, `type`,
-  `active`, `storage_full`). `trap` vrai : succès apparent, rien n'est conservé.
+  `active`, `storage_full`), puis celles de
+  `Partiduo::Api::Core.check_attachment` sur `files` (`core.errors.attachment.*`) :
+  le type est reconnu par `Core.detect_attachment_type` parmi
+  `FILE_TYPES`, la pièce contrôlée par la règle du socle sans être stockée
+  (D-FRM-018). `trap` vrai : succès apparent, rien n'est conservé.
 
 == Boîte de réception
 
@@ -75,9 +88,15 @@ Natures (`FIELD_KINDS`) : `text`, `textarea`, `email`, `phone`, `number`,
   le formulaire ne vise aucune catégorie.
 * `accept(actor, id, card, store_files = true)` — crée la fiche par
   `Partiduo::Api::Cards.create_card` avec l'acteur, verse les pièces par
-  `Partiduo::Api::Core.store_attachment`, tout ou rien ; erreurs du contrat
-  des fiches, `response.processed`, `files.forbidden`, erreurs du socle
-  sur `files`.
+  `Partiduo::Api::Core.store_attachment` et les rattache à la fiche par
+  `Partiduo::Api::Cards.attach` (D-FRM-019), tout ou rien ; erreurs du
+  contrat des fiches, `response.processed`, `files.forbidden` (versement ou
+  lecture des pièces refusés), erreurs du socle sur `files`.
+* `attach_accepted_files(actor) : Int64` — reprise : rattache à leur fiche
+  les pièces versées des réponses acceptées avant la version 0.1.4 et encore
+  conservées ; idempotente ; rend le nombre de réponses reprises
+  (`manage form_attach_files`). Une fiche supprimée est passée
+  (`files.missing`).
 * `close(actor, id, note)`, `reject(actor, id, note)` — `response.processed`
   si déjà traitée ; le rejet efface les pièces en quarantaine.
 * `file(actor, upload_id) : FileView` — pièce reçue (quarantaine ou versée).

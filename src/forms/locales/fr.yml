@@ -101,6 +101,7 @@ fr:
         type: "Seuls les fichiers PDF, PNG et JPEG sont acceptés."
         active: "Ce PDF contient du contenu actif (script, lancement, fichier embarqué) ou est incomplet : envoyez une version simple."
         storage_full: "Les pièces jointes ne sont plus acceptées pour le moment."
-        forbidden: "Verser les pièces au dossier exige le droit d'enregistrer des pièces jointes."
+        forbidden: "Verser les pièces au dossier et les rattacher à la fiche exige le droit d'enregistrer et de lire des pièces jointes."
+        missing: "La fiche ou la pièce jointe n'existe plus."
       response:
         processed: "Cette réponse a déjà été traitée."

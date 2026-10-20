@@ -29,9 +29,11 @@ module Forms
 
     # Permissions du socle exigées en plus pour accepter une réponse : la
     # fiche est créée par le contrat des fiches, les pièces sont versées au
-    # dossier (D-FRM-010).
-    CARD_PERMISSION       = "cards.card.write"
-    ATTACHMENT_PERMISSION = "core.attachment.write"
+    # dossier (D-FRM-010) puis rattachées à la fiche, ce qui exige de
+    # pouvoir les lire (`Partiduo::Api::Cards.attach`, D-FRM-019).
+    CARD_PERMISSION            = "cards.card.write"
+    ATTACHMENT_PERMISSION      = "core.attachment.write"
+    ATTACHMENT_READ_PERMISSION = "core.attachment.read"
 
     # --- Formulaires ---------------------------------------------------------------
 
@@ -289,9 +291,12 @@ module Forms
 
     # Accepte une réponse : crée la fiche `card` par le contrat du cœur avec
     # l'acteur (D-FRM-010) et, si `store_files`, verse les pièces reçues au
-    # dossier. Tout ou rien. Erreurs : celles de
+    # dossier puis les rattache à la fiche (`Partiduo::Api::Cards.attach`,
+    # D-FRM-019). Tout ou rien. Erreurs : celles de
     # `Partiduo::Api::Cards.create_card`, `form.errors.response.processed`,
-    # `.files.forbidden`, celles de `store_attachment` (sur `files`).
+    # `.files.forbidden` (versement ou lecture des pièces refusés à
+    # l'acteur), celles de `store_attachment` et de `Cards.attach` (sur
+    # `files`).
     def self.accept(actor : Actor, id : Int64, card : Partiduo::Api::Cards::CardInput,
                     store_files : Bool = true) : Result(ResponseView)
       authorize!(actor, PROCESS)
@@ -299,18 +304,41 @@ module Forms
         row = Records.response!(id, lock: true)
         next Result(ResponseView).failure(Records.error(FieldError::BASE, "response.processed")) unless row.status == "received"
         with_files = store_files && Upload.filter(response_id: row.id, attachment_id__isnull: true).exists?
-        if with_files && !actor.can?(ATTACHMENT_PERMISSION)
+        if with_files && !(actor.can?(ATTACHMENT_PERMISSION) && actor.can?(ATTACHMENT_READ_PERMISSION))
           next Result(ResponseView).failure(Records.error("files", "files.forbidden"))
         end
         created = Partiduo::Api::Cards.create_card(actor, card)
         next Result(ResponseView).failure(created.errors) if created.failure?
+        card_id = created.value!.id
         if with_files
           errors = Processing.store_files(actor, row)
+          errors = Processing.attach_files(actor, row, card_id) if errors.empty?
+          # Échec : la transaction annule la fiche et les pièces versées.
           next Result(ResponseView).failure(errors) unless errors.empty?
         end
-        processed(row, actor, "accepted", "", created.value!.id)
+        processed(row, actor, "accepted", "", card_id)
         Result(ResponseView).success(Records.response_view(row))
       end
+    end
+
+    # Reprise des réponses acceptées avant le rattachement des pièces aux
+    # fiches (D-FRM-019) : rattache à la fiche de chaque réponse acceptée
+    # encore conservée les pièces qu'elle a versées au dossier. Idempotente
+    # (une pièce déjà rattachée l'est une fois). Une réponse dont la fiche
+    # a été supprimée est passée. Rend le nombre de réponses reprises.
+    # Droits : `form.admin`, puis ceux de `Partiduo::Api::Cards.attach`.
+    def self.attach_accepted_files(actor : Actor) : Int64
+      authorize!(actor, ADMIN)
+      count = 0_i64
+      Response.filter(status: "accepted", card_id__isnull: false).order(:id).each do |row|
+        next unless Upload.filter(response_id: row.id, attachment_id__isnull: false).exists?
+        done = Transaction.run do
+          errors = Processing.attach_files(actor, row, row.card_id!.to_i64)
+          errors.empty? ? Result(Nil).success(nil) : Result(Nil).failure(errors)
+        end
+        count += 1 if done.success?
+      end
+      count
     end
 
     # Classe une réponse traitée sans fiche (D-FRM-008).

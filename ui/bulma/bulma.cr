@@ -3,8 +3,10 @@
 # Interface Bulma de l'extension des formulaires (ADR-005 D4) : écrans
 # authentifiés montés par `partiduo-ui-bulma` sous `/ext/FORM/`
 # (ADR-003 D3) — boîte de réception, traitement d'une réponse, définitions,
-# champs, liens publics — et la *page publique* `/f/<jeton>`, seule route
-# de l'extension hors de ce montage (D-FRM-007). La distribution la
+# champs, liens publics — et la *page publique* `/p/form/<jeton>`, montée
+# sans session par `PartiduoUi::Extensions.public_mount` (D-FRM-017) ;
+# l'ancienne adresse `/f/<jeton>` des liens déjà remis y redirige. La
+# distribution la
 # requiert après l'interface :
 #
 # ```
@@ -25,6 +27,7 @@
 require "../../src/partiduo-form"
 
 require "./ext/request"
+require "./ext/public_extension_handler"
 require "./presenters"
 require "./throttle"
 require "./handlers/base"
@@ -38,31 +41,47 @@ module Forms
     class App < Marten::App
       label "form_ui"
 
-      # Ajoute la route publique aux routes de l'instance, hors du montage
-      # `/ext/FORM/` (qui exige une session) : l'interface commune n'offre
-      # pas de route publique aux extensions (amendement A-FRM-1). Appelé
+      # Ajoute aux routes de l'instance l'*ancienne* adresse publique
+      # `/f/<jeton>`, gardée pour les liens déjà remis au public : elle ne
+      # fait plus que rediriger vers `/p/form/<jeton>` (D-FRM-017). Appelé
       # par Marten avant la préparation des routes, comme le montage des
       # extensions par `PartiduoUi::App#setup`.
       def setup
-        Ui.draw_public
+        Ui.draw_legacy
       end
     end
 
     INSTALLED_APPS = [Forms::Ui::App] of Marten::Apps::Config.class
 
-    # Chemin de la page publique d'un formulaire : `/f/<jeton>`.
-    PUBLIC_PATH = "/f/<token:str>"
-    PUBLIC_NAME = "form_public"
+    # Page publique d'un formulaire, montée par l'interface sous
+    # `/p/form/<jeton>` (`PartiduoUi::Extensions.public_mount`, D-FRM-017) :
+    # route `form_public:form`.
+    PUBLIC_ROUTES = Marten::Routing::Map.draw do
+      path "/<token:str>", Forms::Ui::PublicHandler, name: "form"
+    end
+    PUBLIC_NAME = "form_public:form"
 
-    # Chemin écrit dans le journal du serveur pour la page publique.
-    MASKED_PATH = "/f/…"
+    # Débit de la page publique par adresse, tous envois et affichages
+    # confondus, appliqué par l'interface avant le handler (429) ; le
+    # handler y ajoute ses limites d'envoi par adresse et par lien, le
+    # blocage des essais de jetons, et le contrat sa limite durable en base.
+    PUBLIC_RATE = PartiduoUi::RateLimit::Rule.new(60, 10.minutes)
 
-    @@public_drawn = false
+    # Ancienne adresse publique, redirigée (308) vers la nouvelle.
+    LEGACY_PATH = "/f/<token:str>"
+    LEGACY_NAME = "form_public_legacy"
 
-    def self.draw_public(map : Marten::Routing::Map = Marten.routes) : Nil
-      return if @@public_drawn
-      map.path PUBLIC_PATH, Forms::Ui::PublicHandler, name: PUBLIC_NAME
-      @@public_drawn = true
+    # Chemins écrits dans le journal du serveur pour les adresses publiques :
+    # le jeton n'y paraît jamais (D-FRM-015).
+    MASKED_PATH        = "/p/form/…"
+    MASKED_LEGACY_PATH = "/f/…"
+
+    @@legacy_drawn = false
+
+    def self.draw_legacy(map : Marten::Routing::Map = Marten.routes) : Nil
+      return if @@legacy_drawn
+      map.path LEGACY_PATH, Forms::Ui::LegacyPublicHandler, name: LEGACY_NAME
+      @@legacy_drawn = true
     end
 
     # Routes servies sous `/ext/FORM/`, nommées `form:<nom>` : celles que
@@ -100,6 +119,12 @@ module Forms
     ADMIN_ROUTES   = %w[form_delete link_new link_revoke response_delete purge]
   end
 end
+
+# Page publique, sans session, sous `/p/form/` (A-FRM-1, D-FRM-017) :
+# extension active (404 sinon), débit par adresse (429), taille annoncée
+# (413) et en-têtes stricts communs, contrôlés par l'interface.
+PartiduoUi::Extensions.public_mount Forms::CODE, Forms::Ui::PUBLIC_ROUTES,
+  rate_limits: {"form" => Forms::Ui::PUBLIC_RATE}, max_body_bytes: Forms::Api::MAX_BODY_BYTES.to_i64
 
 PartiduoUi::Extensions.mount Forms::CODE, Forms::Ui::ROUTES, permission: Forms::Api::READ,
   permissions: Forms::Ui::PROCESS_ROUTES.to_h { |route| {route, Forms::Api::PROCESS} }

@@ -237,6 +237,9 @@ succès apparent, rien n'est conservé ni compté. Aucun CAPTCHA (ADR-001).
 session. Modifier `partiduo-ui-bulma` pour y ajouter un montage public :
 hors du périmètre de ce portage, proposé en A-FRM-1.
 
+*Suite (20 octobre 2026).* Page montée par l'interface sous `/p/form/`,
+`/f/` redirigé : D-FRM-017.
+
 === D-FRM-008 — Boîte de réception (10 octobre 2026)
 
 *Choix.* Une réponse est `received` (à traiter), `accepted` (fiche créée),
@@ -268,6 +271,9 @@ pièce jointe (`Content-Disposition: attachment`, `nosniff`, CSP `sandbox`).
 À l'acceptation, et s'il l'a demandé, les pièces sont versées au dossier
 par `store_attachment` *avec l'acteur réel* : le socle les contrôle de
 nouveau ; la copie en quarantaine est alors vidée.
+
+*Suite (20 octobre 2026).* Contrôle par le socle (D-FRM-018), pièces
+rattachées à la fiche (D-FRM-019).
 
 === D-FRM-010 — Rien ne passe d'office : la fiche par le contrat, avec l'acteur réel (10 octobre 2026)
 
@@ -302,6 +308,10 @@ les pièces, `cards.card.read` pour choisir une catégorie et ses attributs.
 Dans les exports CSV de la boîte, un texte reçu qui commencerait par `=`,
 `+`, `-`, `@` ou une tabulation est préfixé d'une apostrophe (injection de
 formule dans un tableur).
+
+*Suite (20 octobre 2026).* Neutralisation laissée à l'export commun
+(D-FRM-020) ; `accept` exige aussi `core.attachment.read` pour rattacher les
+pièces (D-FRM-019).
 
 === D-FRM-013 — Aucun événement (10 octobre 2026)
 
@@ -354,6 +364,126 @@ si le besoin se confirme.
 pose déjà en HTTPS), neutralisation des formules dans les exports CSV du
 cœur (A-FRM-5).
 
+=== D-FRM-017 — Page publique montée par l'interface ; `/f/` redirigé (20 octobre 2026)
+
+*Contexte.* L'interface offre désormais des routes publiques d'extension
+(`PartiduoUi::Extensions.public_mount`, D-AMD-032 du cœur, A-FRM-1) : sous
+`/p/<code>/`, `PartiduoUi::PublicExtensionHandler` rend 404 si l'extension
+est inactive ou la route inconnue, applique la limitation de débit de la
+route par adresse (429, `Retry-After`) et la limite de taille annoncée
+(413), puis appelle le handler de l'extension (protection CSRF de Marten),
+et pose les en-têtes stricts communs — ceux de D-FRM-007. Des liens
+`/f/<jeton>` ont pu être remis au public : ils doivent continuer de servir
+jusqu'à leur expiration (366 jours au plus).
+
+*Choix.* La page publique est montée par `public_mount "FORM"` :
+`/p/form/<jeton>`, route `form_public:form`, débit de 60 requêtes par
+adresse en 10 minutes (la règle « affichages » de l'extension, retirée, que
+l'interface applique désormais à toute la route), taille annoncée
+`MAX_BODY_BYTES`. Le handler garde ses contrôles propres : blocage d'une
+adresse qui essaie trop de jetons, envois par adresse et par lien, taille
+du corps lu (envoi sans `Content-Length`), et le contrat sa *limite durable
+en base* (30 envois par lien et par heure, 200 réponses à traiter par
+formulaire). Ses en-têtes de sécurité propres sont retirés : ce sont ceux
+de l'interface. Les liens émis et affichés pointent vers la nouvelle
+adresse (`Ui.public_path`).
+
+L'ancienne adresse `/f/<jeton>` reste ajoutée aux routes par
+`Forms::Ui::App#setup`, mais ne fait plus que *rediriger* : `308` vers
+`/p/form/<jeton>` (jeton encodé dans le chemin : jamais de redirection hors
+de `/p/form/`), quelle que soit la méthode, avec les en-têtes stricts
+communs (`no-store` compris : la redirection n'est pas gardée en cache). Le
+handler de redirection ne lit ni le corps ni la base et ne vérifie pas le
+jeton CSRF (`protect_from_forgery false`) : il ne change rien, et la
+nouvelle adresse vérifie tout.
+
+*Pourquoi une redirection plutôt qu'un double montage.* Un double montage
+ferait servir la même page par deux chemins aux contrôles différents :
+l'ancien garderait le débit, la taille et les en-têtes propres à
+l'extension, c'est-à-dire le contournement à retirer. La redirection laisse
+un seul point de contrôle. `308` et non `301` : un navigateur change un
+`POST` redirigé en `301` en `GET`, et perdrait la réponse d'une page
+affichée sous `/f/` avant la mise à jour ; `308` renvoie la même méthode et
+le même corps. Le jeton CSRF et son cookie, émis par la page de l'ancienne
+adresse, restent valables à la nouvelle (même origine, cookie de tout le
+site) : l'envoi passe après la redirection (spec). Une page affichée depuis
+une redirection poste ensuite vers son adresse courante, la nouvelle.
+
+*Journal.* Le jeton ne paraît pas dans le journal des requêtes du serveur
+Marten (D-FRM-015) : `/f/…` pour l'ancienne adresse, `/p/form/…` pour la
+nouvelle. Le point d'entrée commun ne masque pas les chemins qu'il sert et
+ne pose pas les en-têtes stricts sur le refus de la protection CSRF (rendu
+avant son `dispatch`) : l'extension rouvre
+`PartiduoUi::PublicExtensionHandler#process_dispatch` pour ses seuls
+chemins `/p/form/` (contournement, `ui/bulma/ext/`), à retirer quand
+l'interface le fera (voir A-FRM-6).
+
+*Déploiement.* La configuration du mandataire (A-FRM-4) doit couvrir les
+*deux* préfixes : journal d'accès sans le chemin en clair pour `/f/` et
+`/p/form/`, `X-Real-IP` écrasé par `$remote_addr`, `limit_req` sur les deux.
+À soumettre à l'utilisateur pour les paquets FreeBSD et la configuration du
+serveur frontal.
+
+*Compatibilité.* Aucune donnée ne change ; les liens déjà remis restent
+valables (redirigés). La route nommée `form_public` devient
+`form_public:form` (nouvelle adresse) et `form_public_legacy` (ancienne).
+
+=== D-FRM-018 — Contrôle des pièces par le socle (20 octobre 2026)
+
+*Choix.* Le contrôle de signature propre (signatures PDF, PNG, JPEG
+recopiées, D-FRM-009) est retiré : le type est reconnu par
+`Partiduo::Api::Core.detect_attachment_type(contenu, FILE_TYPES.keys)`
+(D-AMD-002), puis chaque pièce est contrôlée par
+`Partiduo::Api::Core.check_attachment` avec l'acteur anonyme — la règle même
+de `store_attachment` (type, signature, taille, nom), sans stockage ; ses
+erreurs sont rendues sur `files`. Le nom normalisé et l'empreinte de la
+quarantaine sont ceux du socle. L'extension garde ce que le socle ne fait
+pas : 1 Mo par pièce (le socle admet 20 Mo), PDF à contenu actif refusé,
+quotas de quarantaine, nom assaini avec l'extension du type reconnu.
+
+*Compatibilité.* Les pièces déjà en quarantaine ne changent pas ; la même
+règle les recontrôle au versement.
+
+=== D-FRM-019 — Pièces rattachées à la fiche à l'acceptation (20 octobre 2026)
+
+*Choix.* À l'acceptation, les pièces versées au dossier sont rattachées à
+la fiche créée par `Partiduo::Api::Cards.attach` (D-AMD-008), avec l'acteur
+qui traite, dans la même transaction (fiche, pièces, rattachement et statut,
+ou rien). Droits : écrire la fiche (`cards.card.write`, déjà exigé), lire la
+pièce (`core.attachment.read`, désormais exigé avec `core.attachment.write`
+pour verser : `files.forbidden` avant toute écriture sinon). La pièce reste
+ainsi citée par la fiche après la purge de la réponse, et le socle refuse de
+la supprimer tant qu'elle l'est. L'extension ne fait que *créer* une fiche
+(D-FRM-010) : il n'y a pas de fiche « mise à jour » à qui rattacher.
+
+*Compatibilité.* Les réponses acceptées avant cette version ont versé leurs
+pièces sans les rattacher. Reprise *facultative* et idempotente :
+`manage form_attach_files` (`Forms::Api.attach_accepted_files`, acteur
+système, `form.admin`) rattache à sa fiche les pièces de chaque réponse
+acceptée encore conservée ; une fiche supprimée depuis est passée. Elle est
+facultative parce qu'une réponse purgée ne relie plus rien et qu'aucune
+donnée n'est perdue sans elle (la pièce reste au dossier) ; pas de
+migration : l'extension n'écrit jamais dans les tables du cœur, et le
+rattachement exige un acteur, que seule une commande peut porter.
+
+=== D-FRM-020 — Exports CSV : la neutralisation commune suffit (20 octobre 2026)
+
+*Constat.* L'export CSV commun neutralise désormais les formules
+(`PartiduoUi::Table.csv_safe`, D-AMD-033). Tous les exports CSV de
+l'extension (boîte de réception, valeurs et pièces d'une réponse, liste des
+formulaires) passent par `Table#to_csv` : l'extension ne produit aucun
+fichier CSV par elle-même.
+
+*Choix.* La neutralisation propre (`Ui.csv_safe`, D-FRM-012) est retirée :
+elle précédait la commune sur les mêmes cellules. Elle ne doublait pas
+l'apostrophe (une cellule déjà préfixée ne commence plus par `=`), mais
+neutralisait aussi un nombre négatif (`-12,5` → `'-12,5`) que la règle
+commune laisse lire comme un nombre, et ignorait le saut de ligne en tête
+qu'elle traite. Une seule règle, celle de l'interface (spec : une
+apostrophe, jamais deux ; un nombre reste un nombre). Si l'extension
+produit un jour un fichier hors de `Table`, elle appellera
+`PartiduoUi::Table.csv_safe`.
+
 == Amendements proposés
 
 === A-FRM-1 — Route publique d'extension dans l'interface
@@ -368,6 +498,10 @@ active (404 sinon), applique un jeu d'en-têtes stricts commun et une
 limitation de débit déclarée par route. L'extension y passerait sans
 changer son contrat.
 
+*Réalisé le 20 octobre 2026 :* `PartiduoUi::Extensions.public_mount`
+(D-AMD-032 du cœur) ; page publique sous `/p/form/<jeton>`, `/f/<jeton>`
+redirigé (D-FRM-017).
+
 === A-FRM-2 — Rattacher une pièce jointe à une fiche
 
 *Constat.* Le contrat des fiches n'a pas de pièces jointes. Une pièce reçue
@@ -376,6 +510,10 @@ la purge de la réponse ; ensuite, aucune fiche ne la cite.
 
 *Proposition.* `Partiduo::Api::Cards.attach(actor, card_id, attachment_id)`
 et la liste des pièces dans `CardView`, que l'acceptation appellerait.
+
+*Réalisé le 20 octobre 2026 :* `Cards.attach`, `card_attachments`,
+`CardView#attachments` (D-AMD-008) ; appelé à l'acceptation, reprise par
+`manage form_attach_files` (D-FRM-019).
 
 === A-FRM-3 — Contrôle de type de pièce sans stockage
 
@@ -386,6 +524,9 @@ quarantaine (le socle recontrôle au versement).
 *Proposition.* `Partiduo::Api::Core.check_attachment(input)` : mêmes
 contrôles que `store_attachment` (type, signature, taille, nom), sans
 stocker ni exiger de droit, pour un contenu reçu d'un anonyme.
+
+*Réalisé le 20 octobre 2026 :* `Core.check_attachment`,
+`detect_attachment_type` (D-AMD-002) ; employés à la réception (D-FRM-018).
 
 === A-FRM-4 — Limitation de débit partagée et journaux du mandataire
 
@@ -404,6 +545,10 @@ limiter le débit de `/f/` au mandataire (`limit_req`). Côté Marten : un
 réglage pour masquer des chemins dans le journal des requêtes, qui
 remplacerait la réouverture de `Marten::HTTP::Request`.
 
+*Toujours ouvert (20 octobre 2026) :* la nouvelle adresse `/p/form/` est à
+traiter au mandataire comme `/f/` (D-FRM-017) ; aucun réglage de Marten ne
+masque encore les chemins.
+
 === A-FRM-5 — Formules neutralisées dans les exports CSV du cœur
 
 *Constat.* `PartiduoUi::Table#to_csv` écrit les cellules telles quelles.
@@ -413,3 +558,20 @@ fiche et ressortir dans un export du cœur.
 
 *Proposition.* Neutraliser `=`, `+`, `-`, `@`, tabulation et retour en tête
 de cellule dans l'export CSV commun de l'interface.
+
+*Réalisé le 20 octobre 2026 :* `Table.csv_safe` dans `Table#to_csv`
+(D-AMD-033) ; neutralisation propre de l'extension retirée (D-FRM-020).
+
+=== A-FRM-6 — Journal et en-têtes du point d'entrée public
+
+*Constat.* `PartiduoUi::PublicExtensionHandler` ne masque pas le chemin
+qu'il sert dans le journal des requêtes du serveur (le jeton d'une adresse
+publique y paraît quand l'interface répond seule : 404, 429, 413, 403) et ne
+pose pas les en-têtes stricts communs sur le refus de la protection CSRF,
+rendu par Marten avant son `dispatch`. L'extension le corrige pour ses
+seuls chemins en rouvrant la classe (D-FRM-017).
+
+*Proposition.* Dans l'interface : `process_dispatch` du point d'entrée qui
+pose `PUBLIC_HEADERS` sur toute réponse et masque le dernier segment du
+chemin (`/p/<code>/…`) pour le journal ; l'extension retirerait
+`ui/bulma/ext/public_extension_handler.cr`.

@@ -5,7 +5,8 @@ module Forms
   # fiche proposée d'après les cibles des champs, créée *par le contrat du
   # cœur avec l'acteur qui traite* (ses droits sur les fiches s'appliquent,
   # `card.saved` est publié comme pour toute fiche), pièces versées au
-  # dossier par `store_attachment` avec ce même acteur. Interne.
+  # dossier par `store_attachment` avec ce même acteur, puis rattachées à
+  # la fiche par `Partiduo::Api::Cards.attach` (D-FRM-019). Interne.
   module Processing
     alias Api = Forms::Api
     alias Cards = Partiduo::Api::Cards
@@ -53,6 +54,20 @@ module Forms
         else
           errors.concat(result.errors.map { |error| Partiduo::Api::FieldError.new("files", error.key, error.params) })
         end
+      end
+      errors
+    end
+
+    # Pièces versées au dossier rattachées à la fiche, avec l'acteur qui
+    # traite (droits : écrire la fiche, lire la pièce). Une pièce déjà
+    # rattachée l'est une fois.
+    def self.attach_files(actor : Partiduo::Api::Actor, response : Response, card_id : Int64) : Array(Partiduo::Api::FieldError)
+      errors = [] of Partiduo::Api::FieldError
+      Upload.filter(response_id: response.id, attachment_id__isnull: false).order(:id).each do |upload|
+        result = Cards.attach(actor, card_id, upload.attachment_id!.to_i64)
+        errors.concat(result.errors.map { |error| Partiduo::Api::FieldError.new("files", error.key, error.params) })
+      rescue Partiduo::Api::NotFound
+        errors << Records.error("files", "files.missing")
       end
       errors
     end

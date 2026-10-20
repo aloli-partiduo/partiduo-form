@@ -2,19 +2,19 @@
 
 module Forms
   module Ui
-    # Limitation de débit de la page publique (D-FRM-007), par adresse et
-    # par lien, sur le modèle de `PartiduoUi::RateLimit` (fenêtre glissante
-    # en mémoire, par processus ; adresse du client lue par
-    # `PartiduoUi::RateLimit.client_ip`, derrière le proxy de confiance).
-    # Les adresses ne sont gardées qu'en mémoire, le temps de la fenêtre,
-    # jamais en base ni dans le journal. Le contrat ajoute une limite
-    # durable par lien et par heure, en base.
+    # Limitation de débit propre à la page publique (D-FRM-007, D-FRM-017),
+    # en plus du débit par adresse que l'interface applique à toute la route
+    # (`PartiduoUi::Extensions.public_mount`) : envois par adresse et par
+    # lien, blocage des essais de jetons. Sur le modèle de
+    # `PartiduoUi::RateLimit` (fenêtre glissante en mémoire, par processus ;
+    # adresse du client lue par `PartiduoUi::RateLimit.client_ip`, derrière
+    # le proxy de confiance). Les adresses ne sont gardées qu'en mémoire, le
+    # temps de la fenêtre, jamais en base ni dans le journal. Le contrat
+    # ajoute une limite durable par lien et par heure, en base.
     module Throttle
       record Rule, limit : Int32, window : Time::Span
 
       RULES = {
-        # Affichages du formulaire, par adresse.
-        "view" => Rule.new(60, 10.minutes),
         # Envois, par adresse et par lien.
         "submit_ip"   => Rule.new(10, 10.minutes),
         "submit_link" => Rule.new(20, 10.minutes),

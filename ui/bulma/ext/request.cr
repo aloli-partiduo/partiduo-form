@@ -4,7 +4,8 @@ class Marten::HTTP::Request
   # Remplace le chemin de la requête HTTP sous-jacente, une fois la réponse
   # produite : le journal des requêtes du serveur Marten
   # (`Marten::Server::Handlers::Logger`) l'écrit après coup et n'y lit plus
-  # le jeton de la page publique (D-FRM-015, amendement A-FRM-4).
+  # le jeton de la page publique, à l'ancienne adresse comme à la nouvelle
+  # (D-FRM-015, D-FRM-017, amendement A-FRM-4).
   def partiduo_form_mask_path(path : String) : Nil
     @request.path = path
   end

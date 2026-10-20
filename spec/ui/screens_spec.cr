@@ -17,7 +17,11 @@ end
 describe "Écrans des formulaires sous /ext/FORM/ (ADR-005)" do
   it "est montée sous le code de l'extension, avec ses permissions par route, et la page publique hors montage" do
     Marten.routes.reverse("form:inbox").should eq("/ext/FORM/inbox")
-    Marten.routes.reverse("form_public", token: "abc").should eq("/f/abc")
+    Marten.routes.reverse("form_public:form", token: "abc").should eq("/p/form/abc")
+    Marten.routes.reverse("form_public_legacy", token: "abc").should eq("/f/abc")
+    public_mount = PartiduoUi::Extensions.public_mount?("form") || raise("page publique non montée")
+    public_mount.max_body_bytes.should eq(Api::MAX_BODY_BYTES)
+    public_mount.rule_for("form_public:form").should eq(Forms::Ui::PUBLIC_RATE)
     mount = PartiduoUi::Extensions["FORM"]? || raise("interface non montée")
     mount.permission.should eq("form.read")
     mount.permission_for("form:inbox").should eq("form.read")
@@ -69,12 +73,14 @@ describe "Écrans des formulaires sous /ext/FORM/ (ADR-005)" do
     issued.status.should eq(200)
     issued.headers["Cache-Control"].should eq("no-store")
     issued.html.should contain("ne sera plus jamais affichée")
-    token = issued.html.match(%r{/f/([A-Za-z0-9_-]{43})}).try(&.[1]) || raise "lien absent"
+    # Le lien affiché pointe vers la nouvelle adresse (D-FRM-017).
+    issued.html.should_not contain("/f/")
+    token = issued.html.match(%r{/p/form/([A-Za-z0-9_-]{43})}).try(&.[1]) || raise "lien absent"
     detail = browser.get(form_url).html
     detail.should contain("#{token[0, 4]}…")
     detail.should_not contain(token)
 
-    PartiduoUi::Browser.new.post("/f/#{token}", {"nom" => "Camille Martin", "courriel" => "camille@example.org"})
+    PartiduoUi::Browser.new.post("/p/form/#{token}", {"nom" => "Camille Martin", "courriel" => "camille@example.org"})
       .status.should eq(200)
 
     inbox = browser.get("/ext/FORM/inbox").html
@@ -123,5 +129,19 @@ describe "Écrans des formulaires sous /ext/FORM/ (ADR-005)" do
       browser.post("/ext/FORM/inbox/purge", {} of String => String).status.should eq(302)
     end
     S.response_count.should eq(0)
+  end
+
+  it "neutralise une seule fois, par l'export commun, les formules reçues du public dans l'export CSV" do
+    browser = signed_in
+    form = S.contact_form
+    token = S.link(form).token
+    S.submit(token, S.values({"nom" => "=HYPERLINK(\"http://x\")"})).value!
+    S.submit(token, S.values({"nom" => "-12,5"})).value!
+    csv = browser.get("/ext/FORM/inbox?format=csv").content
+    csv.should contain(%("'=HYPERLINK(""http://x"")"))
+    csv.should_not contain("''=")
+    # Un nombre reste un nombre (règle commune de `Table.csv_safe`).
+    csv.should contain(";-12,5;")
+    csv.should_not contain("'-12,5")
   end
 end
