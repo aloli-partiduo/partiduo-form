@@ -327,18 +327,12 @@ module Forms
     # (une pièce déjà rattachée l'est une fois). Une réponse dont la fiche
     # a été supprimée est passée. Rend le nombre de réponses reprises.
     # Droits : `form.admin`, puis ceux de `Partiduo::Api::Cards.attach`.
+    # Jouée d'elle-même au démarrage de chaque instance par la migration
+    # `form_0002_attach_accepted_files` (D-FRM-021) ; ici pour un passage
+    # manuel (`manage form_attach_files`).
     def self.attach_accepted_files(actor : Actor) : Int64
       authorize!(actor, ADMIN)
-      count = 0_i64
-      Response.filter(status: "accepted", card_id__isnull: false).order(:id).each do |row|
-        next unless Upload.filter(response_id: row.id, attachment_id__isnull: false).exists?
-        done = Transaction.run do
-          errors = Processing.attach_files(actor, row, row.card_id!.to_i64)
-          errors.empty? ? Result(Nil).success(nil) : Result(Nil).failure(errors)
-        end
-        count += 1 if done.success?
-      end
-      count
+      Processing.attach_accepted_files(actor)
     end
 
     # Classe une réponse traitée sans fiche (D-FRM-008).

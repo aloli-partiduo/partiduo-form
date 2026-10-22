@@ -71,5 +71,25 @@ module Forms
       end
       errors
     end
+
+    # Reprise des réponses acceptées avant le rattachement des pièces aux
+    # fiches (D-FRM-019, D-FRM-021) : pour chaque réponse acceptée encore
+    # conservée, rattache à sa fiche les pièces versées au dossier, une
+    # transaction par réponse. Idempotente ; une réponse dont la fiche a été
+    # supprimée est passée. Rend le nombre de réponses reprises. Sans
+    # contrôle de droit : `Api.attach_accepted_files` l'exige, la migration
+    # de données passe l'acteur système.
+    def self.attach_accepted_files(actor : Partiduo::Api::Actor) : Int64
+      count = 0_i64
+      Response.filter(status: "accepted", card_id__isnull: false).order(:id).each do |row|
+        next unless Upload.filter(response_id: row.id, attachment_id__isnull: false).exists?
+        done = Partiduo::Api::Transaction.run do
+          errors = attach_files(actor, row, row.card_id!.to_i64)
+          errors.empty? ? Partiduo::Api::Result(Nil).success(nil) : Partiduo::Api::Result(Nil).failure(errors)
+        end
+        count += 1 if done.success?
+      end
+      count
+    end
   end
 end

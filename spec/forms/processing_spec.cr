@@ -119,6 +119,34 @@ describe "Formulaires : traitement par un utilisateur authentifié (D-FRM-010, D
     Partiduo::Api::Cards.card_attachments(S.system, card_id).size.should eq(1)
   end
 
+  it "joue la reprise en migration de données au démarrage, extension active ou non (D-FRM-021)" do
+    S.setup
+    response = received([S.file("devis.pdf", S::PDF)])
+    draft = Api.card_draft(S.processor, response.id) || raise "fiche proposée attendue"
+    accepted = Api.accept(S.processor, response.id, draft).value!
+    card_id = (accepted.card_id || raise "fiche attendue")
+    attachment_id = (accepted.uploads.first.attachment_id || raise "pièce versée attendue")
+    Partiduo::Api::Cards.detach(S.system, card_id, attachment_id).value!
+    Partiduo::Api::Modules.deactivate(S.system, Forms::CODE).value!
+
+    migration = Migration::Forms::V0002.new
+    migration.attach_accepted_files
+    Partiduo::Api::Cards.card_attachments(S.system, card_id).map(&.id).should eq([attachment_id])
+    migration.attach_accepted_files
+    Partiduo::Api::Cards.card_attachments(S.system, card_id).size.should eq(1)
+    # Retour arrière : le lien rattaché reste.
+    migration.keep_links
+    Partiduo::Api::Cards.card_attachments(S.system, card_id).size.should eq(1)
+  end
+
+  it "déclare la migration après celle des pièces jointes des fiches" do
+    migration = Migration::Forms::V0002
+    migration.app_config.label.should eq("form")
+    migration.migration_name.should eq("0002_attach_accepted_files")
+    migration.depends_on.should contain({"cards", "0006_card_attachments_iban"})
+    migration.depends_on.should contain({"form", "0001_create_form"})
+  end
+
   it "passe, à la reprise, une réponse dont la fiche a été supprimée" do
     S.setup
     response = received([S.file("devis.pdf", S::PDF)])

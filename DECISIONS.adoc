@@ -416,7 +416,7 @@ ne pose pas les en-têtes stricts sur le refus de la protection CSRF (rendu
 avant son `dispatch`) : l'extension rouvre
 `PartiduoUi::PublicExtensionHandler#process_dispatch` pour ses seuls
 chemins `/p/form/` (contournement, `ui/bulma/ext/`), à retirer quand
-l'interface le fera (voir A-FRM-6).
+l'interface le fera (voir A-FRM-6) ; retiré le 22 octobre 2026 (D-FRM-022).
 
 *Déploiement.* La configuration du mandataire (A-FRM-4) doit couvrir les
 *deux* préfixes : journal d'accès sans le chemin en clair pour `/f/` et
@@ -484,6 +484,45 @@ apostrophe, jamais deux ; un nombre reste un nombre). Si l'extension
 produit un jour un fichier hors de `Table`, elle appellera
 `PartiduoUi::Table.csv_safe`.
 
+=== D-FRM-021 — Reprise des pièces en migration de données (22 octobre 2026)
+
+*Contexte.* La reprise `form_attach_files` (D-FRM-019, A-FRM-2) était une
+commande à lancer une fois sur chaque instance après la mise à jour.
+Accord passé avec la session des paquets FreeBSD (D-PKG-012 du cœur) : le
+script rc.d passe déjà `partiduo-manage migrate` au démarrage de chaque
+instance ; une migration de données n'ajoute aucune étape de déploiement.
+
+*Choix.* Migration `form` 0002 (`0002_attach_accepted_files`), qui suit
+celle des pièces jointes des fiches (`cards` 0006) : elle appelle la
+reprise (`Forms::Processing.attach_accepted_files`, partagée avec
+`Forms::Api.attach_accepted_files`) avec l'acteur système, une transaction
+par réponse, et écrit au journal le nombre de réponses reprises. Elle passe
+par le contrat du cœur (`Cards.attach`), jamais par ses tables. Jouée que
+l'extension soit active ou non : elle n'écrit que le lien que
+l'acceptation aurait écrit, et une migration ne se rejoue pas à
+l'activation. Idempotente, sans effet sur une base neuve ; le retour
+arrière ne défait rien (le lien reste vrai). La commande reste pour un
+passage manuel (droits `form.admin` et ceux de `Cards.attach` ; sans effet,
+elle, quand l'extension est inactive). Cela remplace « pas de migration »
+de D-FRM-019.
+
+*Vérification.* `spec/forms/processing_spec.cr` : reprise jouée par la
+migration, extension désactivée, deux fois (idempotente), retour arrière
+sans effet ; dépendances déclarées.
+
+=== D-FRM-022 — Point d'entrée public : réouverture retirée (A-FRM-6, 22 octobre 2026)
+
+*Contexte.* `partiduo-ui-bulma` masque désormais le chemin de toute route
+publique d'extension dans le journal du serveur (`/p/<code>/…`) et pose les
+en-têtes stricts sur toute réponse du point d'entrée, refus de la
+protection CSRF compris (D-AMD-037 du cœur).
+
+*Choix.* `ui/bulma/ext/` est retiré : plus de réouverture de
+`PartiduoUi::PublicExtensionHandler` ni de `Marten::HTTP::Request`.
+L'ancienne adresse `/f/<jeton>`, servie par l'extension, masque son chemin
+par `PartiduoUi::Extensions.mask_logged_path` (`/f/…`). Le journal écrit
+toujours `/p/form/…` et `/f/…` (spec inchangée).
+
 == Amendements proposés
 
 === A-FRM-1 — Route publique d'extension dans l'interface
@@ -513,7 +552,8 @@ et la liste des pièces dans `CardView`, que l'acceptation appellerait.
 
 *Réalisé le 20 octobre 2026 :* `Cards.attach`, `card_attachments`,
 `CardView#attachments` (D-AMD-008) ; appelé à l'acceptation, reprise par
-`manage form_attach_files` (D-FRM-019).
+`manage form_attach_files` (D-FRM-019), jouée en migration de données
+(D-FRM-021).
 
 === A-FRM-3 — Contrôle de type de pièce sans stockage
 
@@ -575,3 +615,7 @@ seuls chemins en rouvrant la classe (D-FRM-017).
 pose `PUBLIC_HEADERS` sur toute réponse et masque le dernier segment du
 chemin (`/p/<code>/…`) pour le journal ; l'extension retirerait
 `ui/bulma/ext/public_extension_handler.cr`.
+
+*Réalisé le 22 octobre 2026 :* `PublicExtensionHandler#process_dispatch`,
+`Extensions.mask_logged_path` (D-AMD-037 du cœur) ; réouverture retirée
+(D-FRM-022).

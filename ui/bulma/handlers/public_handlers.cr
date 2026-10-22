@@ -173,7 +173,7 @@ module Forms
         PartiduoUi::Extensions::PUBLIC_HEADERS.each { |name, value| response.headers[name] = value }
         response
       ensure
-        request.partiduo_form_mask_path(Ui::MASKED_LEGACY_PATH)
+        PartiduoUi::Extensions.mask_logged_path(request, Ui::MASKED_LEGACY_PATH)
       end
     end
   end

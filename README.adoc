@@ -95,9 +95,10 @@ socle) ; elle s'active par dossier (`Partiduo::Api::Modules.activate`,
 écran « Modules »), y compris dans un dossier foyer.
 
 À l'exploitation : planifier `partiduo-manage form_purge` chaque jour ;
-après la mise à jour vers 0.1.4, lancer une fois
-`partiduo-manage form_attach_files` (rattache à leur fiche les pièces des
-réponses déjà acceptées) ; ne pas journaliser en clair les chemins `/f/` *et*
+la reprise des pièces des réponses déjà acceptées (rattachées à leur fiche)
+est une migration de données, jouée d'elle-même par `partiduo-manage
+migrate` au démarrage de l'instance (D-FRM-021) ;
+`partiduo-manage form_attach_files` reste pour un passage manuel ; ne pas journaliser en clair les chemins `/f/` *et*
 `/p/form/` au mandataire (le jeton est dans l'adresse), y écraser
 `X-Real-IP` par l'adresse du client (DECISIONS A-FRM-4, D-FRM-017).
 

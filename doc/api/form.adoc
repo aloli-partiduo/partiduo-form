@@ -95,8 +95,11 @@ nouvelle, méthode et corps gardés. Les liens émis depuis pointent vers
 * `attach_accepted_files(actor) : Int64` — reprise : rattache à leur fiche
   les pièces versées des réponses acceptées avant la version 0.1.4 et encore
   conservées ; idempotente ; rend le nombre de réponses reprises
-  (`manage form_attach_files`). Une fiche supprimée est passée
-  (`files.missing`).
+  (`manage form_attach_files`, passage manuel). Une fiche supprimée est
+  passée (`files.missing`). Jouée d'elle-même au démarrage de chaque
+  instance par la migration de données `form` 0002
+  (`0002_attach_accepted_files`, acteur système, extension active ou non ;
+  D-FRM-021).
 * `close(actor, id, note)`, `reject(actor, id, note)` — `response.processed`
   si déjà traitée ; le rejet efface les pièces en quarantaine.
 * `file(actor, upload_id) : FileView` — pièce reçue (quarantaine ou versée).

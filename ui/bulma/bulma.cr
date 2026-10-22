@@ -26,8 +26,6 @@
 # taille et la protection CSRF.
 require "../../src/partiduo-form"
 
-require "./ext/request"
-require "./ext/public_extension_handler"
 require "./presenters"
 require "./throttle"
 require "./handlers/base"
@@ -71,9 +69,9 @@ module Forms
     LEGACY_PATH = "/f/<token:str>"
     LEGACY_NAME = "form_public_legacy"
 
-    # Chemins écrits dans le journal du serveur pour les adresses publiques :
-    # le jeton n'y paraît jamais (D-FRM-015).
-    MASKED_PATH        = "/p/form/…"
+    # Chemin écrit dans le journal du serveur pour l'ancienne adresse
+    # publique : le jeton n'y paraît jamais (D-FRM-015). La nouvelle
+    # (`/p/form/…`) est masquée par l'interface (D-FRM-022).
     MASKED_LEGACY_PATH = "/f/…"
 
     @@legacy_drawn = false
