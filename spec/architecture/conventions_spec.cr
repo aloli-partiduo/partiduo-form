@@ -31,13 +31,13 @@ describe "Conventions de l'extension des formulaires" do
     offenders.should be_empty
   end
 
-  it "a les mêmes clés de traduction en fr, en et nl, aux mêmes interpolations" do
+  it "a les mêmes clés de traduction dans chaque langue de l'interface, aux mêmes interpolations" do
     %w[src/forms/locales ui/bulma/locales].flat_map do |dir|
       PartiduoUi::Translations.parity_failures(File.join(Forms::SpecSupport::ROOT, dir))
     end.should eq([] of String)
   end
 
-  it "traduit en fr, en et nl toute clé passée à I18n.t ou {% translate %} (cœur, interface, extension)" do
+  it "traduit dans chaque langue de l'interface toute clé passée à I18n.t ou {% translate %} (cœur, interface, extension)" do
     PartiduoUi::Translations.unknown_keys(Forms::SpecSupport::ROOT, %w[src/**/*.cr ui/**/*.cr ui/**/*.html]).should eq([] of String)
   end
 
@@ -55,7 +55,7 @@ describe "Conventions de l'extension des formulaires" do
     missing.should be_empty
   end
 
-  it "traduit toute clé d'erreur du contrat (form.errors.*) en fr, en et nl" do
+  it "traduit toute clé d'erreur du contrat (form.errors.*) dans chaque langue de l'interface" do
     cited = source_files("src/**/*.cr").flat_map do |path|
       File.read(path).scan(/error\([^()]*?, "([a-z_]+(?:\.[a-z_]+)+)"/).map(&.[1])
     end.uniq!

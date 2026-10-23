@@ -1,0 +1,107 @@
+de:
+  form:
+    module:
+      name: "Formulare"
+    permissions:
+      read: "Formulare, ihre Links und den Posteingang einsehen"
+      process: "Eingegangene Antworten bearbeiten: Stammsatz anlegen, ablegen, ablehnen, Anhang herunterladen"
+      design: "Formulare und ihre Felder definieren"
+      admin: "Öffentliche Links ausgeben und widerrufen, Antworten und Formulare löschen, bereinigen"
+    menu:
+      form: "Formulare"
+      form_inbox: "Eingegangene Antworten"
+      form_definitions: "Formulare"
+    kinds:
+      text: "Kurztext"
+      textarea: "Langtext"
+      email: "E-Mail-Adresse"
+      phone: "Telefon"
+      number: "Zahl"
+      date: "Datum"
+      checkbox: "Kontrollkästchen"
+      select: "Auswahlliste"
+    statuses:
+      received: "Zu bearbeiten"
+      accepted: "Stammsatz angelegt"
+      closed: "Abgelegt"
+      rejected: "Abgelehnt"
+    link_states:
+      active: "Aktiv"
+      expired: "Abgelaufen"
+      revoked: "Widerrufen"
+      exhausted: "Aufgebraucht"
+    targets:
+      name: "Name des Stammsatzes"
+      email: "E-Mail"
+      phone: "Telefon"
+      contact_name: "Ansprechpartner"
+      description: "Beschreibung"
+      vat_number: "USt-IdNr."
+      siren: "SIREN"
+      siret: "SIRET"
+      address:
+        line1: "Adresse (Zeile 1)"
+        line2: "Adresse (Zeile 2)"
+        postcode: "Postleitzahl"
+        city: "Ort"
+        country_code: "Land (ISO-Code)"
+    errors:
+      text:
+        blank: "Dieses Feld ist erforderlich."
+        too_long: "Höchstens %{max} Zeichen."
+        encoding: "Der Text enthält unlesbare Zeichen."
+      retention:
+        range: "Die Aufbewahrungsdauer liegt zwischen 1 und %{max} Tagen."
+      max_files:
+        range: "Die Anzahl der Anhänge liegt zwischen 1 und %{max}."
+      category:
+        unknown: "Diese Stammsatzkategorie existiert nicht."
+        forbidden: "Sie dürfen die Stammsatzkategorien nicht lesen."
+        targets: "Das Feld „%{field}“ zielt auf ein Attribut, das diese Kategorie nicht hat: Ändern Sie zuerst sein Ziel."
+      form:
+        pending: "Es warten noch Antworten auf Bearbeitung: Bearbeiten oder löschen Sie sie vor dem Formular."
+      field:
+        key_format: "Der Schlüssel beginnt mit einem Kleinbuchstaben, gefolgt von Buchstaben, Ziffern oder „_“ (höchstens 40)."
+        key_reserved: "Der Schlüssel „%{value}“ ist reserviert."
+        key_taken: "Ein anderes Feld hat bereits den Schlüssel „%{value}“."
+        too_many: "Ein Formular hat höchstens %{max} Felder."
+        kind_invalid: "Unbekannter Feldtyp: %{value}."
+        max_length: "Die maximale Länge liegt zwischen 1 und %{max}."
+        choices_blank: "Geben Sie mindestens eine Auswahl an, eine pro Zeile."
+        choices_many: "Höchstens %{max} Auswahlmöglichkeiten."
+        choice_long: "Eine Auswahl hat höchstens %{max} Zeichen."
+        target_taken: "Ein anderes Feld befüllt bereits „%{value}“."
+        target_no_category: "Wählen Sie zuerst eine Stammsatzkategorie für das Formular."
+        target_invalid: "Unbekanntes Ziel: %{value}."
+      link:
+        expires_past: "Das Ablaufdatum darf nicht in der Vergangenheit liegen."
+        expires_far: "Ein Link läuft spätestens nach %{max} Tagen ab."
+        max_uses: "Die Anzahl der Übermittlungen liegt zwischen 1 und %{max}."
+        no_fields: "Fügen Sie mindestens ein Feld hinzu, bevor Sie das Formular veröffentlichen."
+        disabled: "Das Formular ist deaktiviert."
+        revoked: "Dieser Link ist bereits widerrufen."
+        invalid: "Dieser Link ist ungültig oder nicht mehr aktiv."
+      limits:
+        hourly: "Zu viele Übermittlungen über diesen Link: Versuchen Sie es in einer Stunde erneut."
+        inbox_full: "Dieses Formular nimmt derzeit keine Antworten an."
+      value:
+        encoding: "Der Wert enthält unlesbare Zeichen."
+        required: "Dieses Feld ist erforderlich."
+        too_long: "Der Wert ist zu lang."
+        email: "Ungültige E-Mail-Adresse."
+        phone: "Ungültige Telefonnummer."
+        number: "Ungültige Zahl."
+        date: "Ungültiges Datum."
+        choice: "Wählen Sie einen Wert aus der Liste."
+      files:
+        not_accepted: "Dieses Formular nimmt keine Anhänge an."
+        too_many: "Höchstens %{max} Anhänge."
+        empty: "Ein Anhang ist leer."
+        too_large: "Ein Anhang überschreitet %{max} MB."
+        type: "Es werden nur PDF-, PNG- und JPEG-Dateien angenommen."
+        active: "Dieses PDF enthält aktive Inhalte (Skript, Startaktion, eingebettete Datei) oder ist unvollständig: Senden Sie eine einfache Fassung."
+        storage_full: "Anhänge werden derzeit nicht angenommen."
+        forbidden: "Um die Anhänge im Mandanten abzulegen und dem Stammsatz zuzuordnen, ist das Recht zum Speichern und Lesen von Anhängen erforderlich."
+        missing: "Der Stammsatz oder der Anhang existiert nicht mehr."
+      response:
+        processed: "Diese Antwort wurde bereits bearbeitet."

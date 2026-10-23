@@ -1,0 +1,107 @@
+it:
+  form:
+    module:
+      name: "Moduli"
+    permissions:
+      read: "Consultare i moduli, i loro link e la posta in arrivo"
+      process: "Gestire le risposte ricevute: creare la scheda, archiviare, rifiutare, scaricare un allegato"
+      design: "Definire i moduli e i loro campi"
+      admin: "Emettere e revocare i link pubblici, cancellare risposte e moduli, ripulire"
+    menu:
+      form: "Moduli"
+      form_inbox: "Risposte ricevute"
+      form_definitions: "Moduli"
+    kinds:
+      text: "Testo breve"
+      textarea: "Testo lungo"
+      email: "Indirizzo e-mail"
+      phone: "Telefono"
+      number: "Numero"
+      date: "Data"
+      checkbox: "Casella di controllo"
+      select: "Elenco di scelte"
+    statuses:
+      received: "Da gestire"
+      accepted: "Scheda creata"
+      closed: "Archiviata"
+      rejected: "Rifiutata"
+    link_states:
+      active: "Attivo"
+      expired: "Scaduto"
+      revoked: "Revocato"
+      exhausted: "Esaurito"
+    targets:
+      name: "Nome della scheda"
+      email: "E-mail"
+      phone: "Telefono"
+      contact_name: "Referente"
+      description: "Descrizione"
+      vat_number: "Partita IVA"
+      siren: "SIREN"
+      siret: "SIRET"
+      address:
+        line1: "Indirizzo (riga 1)"
+        line2: "Indirizzo (riga 2)"
+        postcode: "CAP"
+        city: "Città"
+        country_code: "Paese (codice ISO)"
+    errors:
+      text:
+        blank: "Questo campo è obbligatorio."
+        too_long: "Non più di %{max} caratteri."
+        encoding: "Il testo contiene caratteri illeggibili."
+      retention:
+        range: "La durata di conservazione va da 1 a %{max} giorni."
+      max_files:
+        range: "Il numero di allegati va da 1 a %{max}."
+      category:
+        unknown: "Questa categoria di schede non esiste."
+        forbidden: "Non è autorizzato a leggere le categorie di schede."
+        targets: "Il campo «%{field}» punta a un attributo assente in questa categoria: ne modifichi prima la destinazione."
+      form:
+        pending: "Alcune risposte attendono di essere gestite: le gestisca o le cancelli prima del modulo."
+      field:
+        key_format: "La chiave inizia con una lettera minuscola, seguita da lettere, cifre o «_» (40 al massimo)."
+        key_reserved: "La chiave «%{value}» è riservata."
+        key_taken: "Un altro campo ha già la chiave «%{value}»."
+        too_many: "Un modulo ha al massimo %{max} campi."
+        kind_invalid: "Tipo di campo sconosciuto: %{value}."
+        max_length: "La lunghezza massima va da 1 a %{max}."
+        choices_blank: "Indichi almeno una scelta, una per riga."
+        choices_many: "Non più di %{max} scelte."
+        choice_long: "Una scelta non supera i %{max} caratteri."
+        target_taken: "Un altro campo compila già «%{value}»."
+        target_no_category: "Scelga prima una categoria di schede per il modulo."
+        target_invalid: "Destinazione sconosciuta: %{value}."
+      link:
+        expires_past: "La data di scadenza non può essere nel passato."
+        expires_far: "Un link scade al più tardi entro %{max} giorni."
+        max_uses: "Il numero di invii va da 1 a %{max}."
+        no_fields: "Aggiunga almeno un campo prima di pubblicare il modulo."
+        disabled: "Il modulo è disattivato."
+        revoked: "Questo link è già revocato."
+        invalid: "Questo link non è valido o non è più attivo."
+      limits:
+        hourly: "Troppi invii su questo link al momento: riprovi tra un'ora."
+        inbox_full: "Questo modulo non accetta più risposte al momento."
+      value:
+        encoding: "Il valore contiene caratteri illeggibili."
+        required: "Questo campo è obbligatorio."
+        too_long: "Il valore è troppo lungo."
+        email: "Indirizzo e-mail non valido."
+        phone: "Numero di telefono non valido."
+        number: "Numero non valido."
+        date: "Data non valida."
+        choice: "Scelga un valore dall'elenco."
+      files:
+        not_accepted: "Questo modulo non accetta allegati."
+        too_many: "Non più di %{max} allegati."
+        empty: "Un allegato è vuoto."
+        too_large: "Un allegato supera %{max} MB."
+        type: "Sono accettati solo file PDF, PNG e JPEG."
+        active: "Questo PDF contiene contenuto attivo (script, azione di avvio, file incorporato) o è incompleto: invii una versione semplice."
+        storage_full: "Al momento gli allegati non sono accettati."
+        forbidden: "Per archiviare gli allegati nel dossier e collegarli alla scheda è necessaria l'autorizzazione a salvare e leggere gli allegati."
+        missing: "La scheda o l'allegato non esiste più."
+      response:
+        processed: "Questa risposta è già stata gestita."

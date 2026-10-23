@@ -30,7 +30,7 @@ describe "Extension des formulaires : manifeste et activation (ADR-003 D2)" do
     Partiduo::Modules.dependency_errors(manifest, Set{Forms::CODE}).should be_empty
   end
 
-  it "traduit son nom, ses permissions et ses menus en fr, en et nl" do
+  it "traduit son nom, ses permissions et ses menus dans chaque langue de l'interface" do
     manifest = Partiduo::Modules[Forms::CODE]
     keys = [manifest.name] + manifest.permission_entries.map(&.label) + manifest.menus.map(&.label)
     Partiduo::LOCALES.each do |locale|

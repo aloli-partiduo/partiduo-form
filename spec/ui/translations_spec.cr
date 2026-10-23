@@ -4,9 +4,9 @@ require "../spec_helper"
 
 # Traductions des écrans de l'extension (ADR-005 D7) : chaque route de
 # `/ext/FORM/` et de la page publique `/p/form/` servie en `GET` (liste
-# tirée du routeur de Marten), obtenue en fr, en et nl, par un
-# administrateur pour les écrans de gestion et sans session pour la page
-# publique. Jeu de données : un formulaire de contact à pièces jointes,
+# tirée du routeur de Marten), obtenue dans chaque langue de l'interface,
+# par un administrateur pour les écrans de gestion et sans session pour la
+# page publique. Jeu de données : un formulaire de contact à pièces jointes,
 # des liens actif, épuisé et révoqué, des réponses reçue (avec pièce),
 # acceptée, classée et rejetée, et un formulaire sans champ. Contrôle de
 # l'interface (`PartiduoUi::Translations`) : ni marqueur de traduction
@@ -16,7 +16,7 @@ require "../spec_helper"
 private alias S = Forms::SpecSupport
 private alias Api = Forms::Api
 
-describe "Traductions des écrans des formulaires (fr, en, nl)" do
+describe "Traductions des écrans des formulaires (chaque langue de l'interface)" do
   it "rend chaque écran dans chaque langue, sans clé absente, brute ni interpolation non résolue" do
     browser = PartiduoUi::Books.admin
     S.user("bruno@example.com", "Bruno")

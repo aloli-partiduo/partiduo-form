@@ -523,6 +523,23 @@ L'ancienne adresse `/f/<jeton>`, servie par l'extension, masque son chemin
 par `PartiduoUi::Extensions.mask_logged_path` (`/f/…`). Le journal écrit
 toujours `/p/form/…` et `/f/…` (spec inchangée).
 
+=== D-FRM-023 — Page publique dans la langue du visiteur (23 octobre 2026)
+
+*Contexte.* L'interface passe à sept langues (fr, en, nl, de, es, it, pt).
+La page publique `/p/form/<jeton>` est lue par un visiteur sans session.
+
+*Choix.* L'extension ne choisit pas la langue : elle suit la négociation de
+`partiduo-ui-bulma` (cookie, puis `Accept-Language`, sinon langue du
+dossier, D-UI-080). Les libellés de la page (finalité, responsable,
+conservation, erreurs, remerciement) sont traduits dans les sept langues ;
+le contenu saisi par le dossier (titre, finalité, libellés des champs)
+reste tel qu'il a été écrit. Aucune liste de langues n'est codée dans
+l'extension : ses specs bouclent sur `Partiduo::LOCALES`.
+
+*Vérification.* `spec/ui/public_spec.cr` : un navigateur `de-DE` obtient le
+formulaire et la page d'erreur en allemand ; `spec/ui/translations_spec.cr`
+parcourt chaque écran dans chaque langue.
+
 == Amendements proposés
 
 === A-FRM-1 — Route publique d'extension dans l'interface

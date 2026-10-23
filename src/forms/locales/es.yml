@@ -1,0 +1,107 @@
+es:
+  form:
+    module:
+      name: "Formularios"
+    permissions:
+      read: "Consultar los formularios, sus enlaces y la bandeja de entrada"
+      process: "Tramitar las respuestas recibidas: crear la ficha, archivar, rechazar, descargar un adjunto"
+      design: "Definir los formularios y sus campos"
+      admin: "Emitir y revocar los enlaces públicos, borrar respuestas y formularios, purgar"
+    menu:
+      form: "Formularios"
+      form_inbox: "Respuestas recibidas"
+      form_definitions: "Formularios"
+    kinds:
+      text: "Texto corto"
+      textarea: "Texto largo"
+      email: "Correo electrónico"
+      phone: "Teléfono"
+      number: "Número"
+      date: "Fecha"
+      checkbox: "Casilla de verificación"
+      select: "Lista de opciones"
+    statuses:
+      received: "Pendiente"
+      accepted: "Ficha creada"
+      closed: "Archivada"
+      rejected: "Rechazada"
+    link_states:
+      active: "Activo"
+      expired: "Caducado"
+      revoked: "Revocado"
+      exhausted: "Agotado"
+    targets:
+      name: "Nombre de la ficha"
+      email: "Correo electrónico"
+      phone: "Teléfono"
+      contact_name: "Contacto"
+      description: "Descripción"
+      vat_number: "NIF-IVA"
+      siren: "SIREN"
+      siret: "SIRET"
+      address:
+        line1: "Dirección (línea 1)"
+        line2: "Dirección (línea 2)"
+        postcode: "Código postal"
+        city: "Ciudad"
+        country_code: "País (código ISO)"
+    errors:
+      text:
+        blank: "Este campo es obligatorio."
+        too_long: "No más de %{max} caracteres."
+        encoding: "El texto contiene caracteres ilegibles."
+      retention:
+        range: "El plazo de conservación va de 1 a %{max} días."
+      max_files:
+        range: "El número de adjuntos va de 1 a %{max}."
+      category:
+        unknown: "Esta categoría de fichas no existe."
+        forbidden: "No puede leer las categorías de fichas."
+        targets: "El campo «%{field}» apunta a un atributo que esta categoría no tiene: cambie primero su destino."
+      form:
+        pending: "Hay respuestas pendientes de tramitar: tramítelas o bórrelas antes que el formulario."
+      field:
+        key_format: "La clave empieza por una letra minúscula, seguida de letras, cifras o «_» (40 como máximo)."
+        key_reserved: "La clave «%{value}» está reservada."
+        key_taken: "Otro campo ya tiene la clave «%{value}»."
+        too_many: "Un formulario tiene como máximo %{max} campos."
+        kind_invalid: "Tipo de campo desconocido: %{value}."
+        max_length: "La longitud máxima va de 1 a %{max}."
+        choices_blank: "Indique al menos una opción, una por línea."
+        choices_many: "No más de %{max} opciones."
+        choice_long: "Una opción no supera los %{max} caracteres."
+        target_taken: "Otro campo ya rellena «%{value}»."
+        target_no_category: "Elija primero una categoría de fichas para el formulario."
+        target_invalid: "Destino desconocido: %{value}."
+      link:
+        expires_past: "La fecha de caducidad no puede ser pasada."
+        expires_far: "Un enlace caduca como muy tarde en %{max} días."
+        max_uses: "El número de envíos va de 1 a %{max}."
+        no_fields: "Añada al menos un campo antes de publicar el formulario."
+        disabled: "El formulario está desactivado."
+        revoked: "Este enlace ya está revocado."
+        invalid: "Este enlace no es válido o ya no está activo."
+      limits:
+        hourly: "Demasiados envíos en este enlace por el momento: vuelva a intentarlo dentro de una hora."
+        inbox_full: "Este formulario no acepta más respuestas por el momento."
+      value:
+        encoding: "El valor contiene caracteres ilegibles."
+        required: "Este campo es obligatorio."
+        too_long: "El valor es demasiado largo."
+        email: "Correo electrónico no válido."
+        phone: "Número de teléfono no válido."
+        number: "Número no válido."
+        date: "Fecha no válida."
+        choice: "Elija un valor de la lista."
+      files:
+        not_accepted: "Este formulario no acepta archivos adjuntos."
+        too_many: "No más de %{max} archivos adjuntos."
+        empty: "Un archivo adjunto está vacío."
+        too_large: "Un archivo adjunto supera %{max} MB."
+        type: "Solo se aceptan archivos PDF, PNG y JPEG."
+        active: "Este PDF contiene contenido activo (script, acción de inicio, archivo incrustado) o está incompleto: envíe una versión simple."
+        storage_full: "Por el momento no se aceptan archivos adjuntos."
+        forbidden: "Incorporar los adjuntos al expediente y vincularlos a la ficha requiere el permiso de guardar y leer archivos adjuntos."
+        missing: "La ficha o el archivo adjunto ya no existe."
+      response:
+        processed: "Esta respuesta ya se ha tramitado."

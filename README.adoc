@@ -70,7 +70,7 @@ src/
     ├── services/             # jetons, contrôles, envois, traitement, purge (interne)
     ├── api/                  # contrat public Forms::Api
     ├── commands/             # manage form_purge, form_attach_files
-    └── locales/              # fr, en, nl
+    └── locales/              # fr, en, nl, de, es, it, pt
 ui/
 └── bulma/                    # interface pour partiduo-ui-bulma (application « form_ui »)
     ├── bulma.cr              # routes sous /ext/FORM/, page publique /p/form/<jeton>, redirection /f/

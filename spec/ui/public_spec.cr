@@ -54,6 +54,22 @@ describe "Page publique /p/form/<jeton> : surface sans authentification (D-FRM-0
     page.should_not contain(token)
   end
 
+  it "parle la langue du navigateur du visiteur : de-DE obtient le formulaire en allemand (D-UI-080)" do
+    _form, token = published
+    response = PartiduoUi::Browser.new("de-DE").get("/p/form/#{token}")
+    response.status.should eq(200)
+    expect_secured(response)
+    page = response.html
+    page.should contain(%(<html lang="de">))
+    page.should contain("Ihre Antwort wird höchstens 30 Tage aufbewahrt und dann gelöscht.")
+    page.should contain("Verantwortlicher")
+    page.should_not contain("Votre réponse est conservée")
+    # Le contenu saisi par le dossier (titre, finalité) reste dans sa langue.
+    page.should contain("<h1 class=\"pd-auth-title\">Demande de contact</h1>")
+    PartiduoUi::Browser.new("de-DE").get("/p/form/#{"x" * 43}").html
+      .should contain("Dieser Link ist ungültig oder nicht mehr aktiv.")
+  end
+
   it "refuse un jeton faux, mal formé, expiré ou révoqué par la même page 404, sans dire pourquoi" do
     form, token = published
     revoked = S.link(form)
